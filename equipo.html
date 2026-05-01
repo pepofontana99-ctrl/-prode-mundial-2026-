@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mi Equipo · Prode Mundial 2026</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root{--verde:#00C853;--verde-dark:#009624;--oro:#FFD600;--bg:#0a0e17;--bg2:#111827;--bg3:#1a2235;--texto:#e8edf5;--muted:#6b7a99;--border:rgba(255,255,255,0.07);--card:rgba(255,255,255,0.04);--field:#1a3a28;--field-line:rgba(255,255,255,0.06);}
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--texto);min-height:100vh;}
+  body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellipse 80% 50% at 20% 10%,rgba(0,200,83,0.07) 0%,transparent 60%);pointer-events:none;z-index:0;}
+  nav{position:sticky;top:0;z-index:100;background:rgba(10,14,23,0.9);backdrop-filter:blur(12px);border-bottom:1px solid var(--border);padding:0 2rem;height:56px;display:flex;align-items:center;justify-content:space-between;}
+  .nav-logo{font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:2px;display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--texto);}
+  .nav-logo .dot{width:8px;height:8px;border-radius:50%;background:var(--verde);box-shadow:0 0 8px var(--verde);animation:pulse 2s ease-in-out infinite;}
+  @keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.6;transform:scale(.8)}}
+  .save-btn-nav{background:var(--verde);color:#000;font-family:'Bebas Neue',sans-serif;font-size:14px;letter-spacing:1px;border:none;border-radius:6px;padding:7px 18px;cursor:pointer;transition:all .2s;}
+  .save-btn-nav:hover{background:var(--verde-dark);}
+  .save-btn-nav:disabled{background:var(--muted);cursor:default;}
+  .wrapper{position:relative;z-index:1;display:grid;grid-template-columns:1fr 380px;gap:0;max-width:1280px;margin:0 auto;min-height:calc(100vh - 56px);}
+  .field-side{padding:2rem;border-right:1px solid var(--border);display:flex;flex-direction:column;gap:1.5rem;}
+  .field-title{font-family:'Bebas Neue',sans-serif;font-size:36px;letter-spacing:2px;line-height:1;}
+  .field-title .sub{font-family:'DM Sans',sans-serif;font-size:12px;color:var(--muted);font-weight:400;letter-spacing:0;display:block;margin-bottom:4px;}
+  .slot-pill{background:var(--card);border:1px solid var(--border);border-radius:20px;padding:4px 12px;font-size:12px;color:var(--muted);}
+  .slot-pill .num{font-family:'Bebas Neue',sans-serif;font-size:16px;color:var(--texto);margin-right:4px;}
+  .slot-pill .num.ok{color:var(--verde);}
+  .field{background:var(--field);border-radius:16px;border:1px solid rgba(255,255,255,0.06);padding:1.5rem 1rem;display:flex;flex-direction:column;position:relative;overflow:hidden;}
+  .field::before{content:'';position:absolute;top:50%;left:10%;right:10%;height:1px;background:var(--field-line);}
+  .field::after{content:'';position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:80px;height:80px;border-radius:50%;border:1px solid var(--field-line);}
+  .field-zone{display:flex;flex-direction:column;align-items:center;gap:8px;padding:14px 0;position:relative;z-index:1;}
+  .zone-label{font-size:10px;letter-spacing:2px;text-transform:uppercase;color:rgba(255,255,255,0.2);font-weight:500;}
+  .zone-players{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;}
+  .player-slot{display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer;width:82px;}
+  .player-circle{width:52px;height:52px;border-radius:50%;border:2px solid rgba(255,255,255,0.12);background:var(--bg3);display:flex;align-items:center;justify-content:center;font-size:20px;transition:all .2s;position:relative;overflow:hidden;}
+  .player-slot:hover .player-circle{border-color:var(--verde);box-shadow:0 0 12px rgba(0,200,83,0.3);transform:scale(1.08);}
+  .player-slot.filled .player-circle{border-color:rgba(0,200,83,0.5);background:rgba(0,200,83,0.08);}
+  .player-slot.suplente .player-circle{border-style:dashed;border-color:rgba(255,255,255,0.15);background:rgba(255,255,255,0.02);}
+  .remove-btn{position:absolute;top:-4px;right:-4px;width:16px;height:16px;border-radius:50%;background:#ff4444;border:none;cursor:pointer;font-size:10px;color:#fff;display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity .15s;line-height:1;}
+  .player-slot:hover .remove-btn{opacity:1;}
+  .player-flag-img{width:36px;height:24px;border-radius:3px;object-fit:cover;}
+  .player-name{font-size:10px;font-weight:500;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:80px;}
+  .empty-slot-label{font-size:10px;color:rgba(255,255,255,0.25);}
+  .bench-section{}
+  .bench-title{font-size:12px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-bottom:10px;display:flex;align-items:center;gap:10px;}
+  .bench-title::after{content:'';flex:1;height:1px;background:var(--border);}
+  .bench-row{display:flex;gap:10px;}
+  .bench-chip{flex:1;background:var(--card);border:1px dashed rgba(255,255,255,0.1);border-radius:10px;padding:10px;display:flex;align-items:center;gap:10px;cursor:pointer;transition:all .2s;min-height:60px;}
+  .bench-chip:hover{border-color:rgba(0,200,83,.3);background:rgba(0,200,83,.03);}
+  .bench-chip.filled{border-style:solid;border-color:rgba(0,200,83,.2);}
+  .bench-flag{font-size:20px;}
+  .bench-info{flex:1;}
+  .bench-name{font-size:13px;font-weight:500;}
+  .bench-pos{font-size:11px;color:var(--muted);}
+  .bench-remove{color:var(--muted);cursor:pointer;padding:4px;}
+  .bench-remove:hover{color:#ff4444;}
+  .panel-side{display:flex;flex-direction:column;background:var(--bg2);max-height:calc(100vh - 56px);position:sticky;top:56px;}
+  .panel-header{padding:1.25rem 1.5rem;border-bottom:1px solid var(--border);flex-shrink:0;}
+  .panel-header h3{font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:1px;margin-bottom:10px;}
+  .search-box{position:relative;margin-bottom:10px;}
+  .search-box input{width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:8px;color:var(--texto);font-family:'DM Sans',sans-serif;font-size:13px;padding:9px 12px 9px 36px;outline:none;transition:border-color .2s;}
+  .search-box input:focus{border-color:var(--verde);}
+  .search-box input::placeholder{color:var(--muted);}
+  .search-icon{position:absolute;left:11px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:14px;pointer-events:none;}
+  .pos-filters{display:flex;gap:5px;}
+  .pf-btn{flex:1;padding:6px 0;border-radius:6px;font-size:12px;font-weight:500;cursor:pointer;border:1px solid var(--border);background:var(--card);color:var(--muted);transition:all .15s;font-family:'DM Sans',sans-serif;}
+  .pf-btn.active{background:rgba(0,200,83,.12);border-color:rgba(0,200,83,.3);color:var(--verde);}
+  .player-list{flex:1;overflow-y:auto;}
+  .player-list::-webkit-scrollbar{width:4px;}
+  .player-list::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px;}
+  .list-section-title{padding:8px 1.5rem 4px;font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);background:var(--bg2);position:sticky;top:0;z-index:2;border-bottom:1px solid var(--border);}
+  .player-item{display:flex;align-items:center;gap:12px;padding:10px 1.5rem;border-bottom:1px solid var(--border);cursor:pointer;transition:background .15s;}
+  .player-item:hover{background:rgba(255,255,255,.03);}
+  .player-item.selected{background:rgba(0,200,83,.05);}
+  .pi-flag{font-size:18px;flex-shrink:0;}
+  .pi-flag-img{width:26px;height:17px;border-radius:2px;object-fit:cover;flex-shrink:0;}
+  .pi-info{flex:1;min-width:0;}
+  .pi-name{font-size:13px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .pi-meta{font-size:11px;color:var(--muted);}
+  .pos-badge{font-size:10px;padding:2px 7px;border-radius:4px;font-weight:500;}
+  .pos-badge.arq{background:rgba(255,214,0,.12);color:var(--oro);}
+  .pos-badge.def{background:rgba(0,200,83,.1);color:var(--verde);}
+  .pos-badge.med{background:rgba(55,138,221,.12);color:#378ADD;}
+  .pos-badge.del{background:rgba(208,90,48,.12);color:#D85A30;}
+  .add-btn{width:28px;height:28px;border-radius:50%;border:1px solid var(--border);background:none;color:var(--muted);font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;font-family:'DM Sans',sans-serif;line-height:1;flex-shrink:0;}
+  .add-btn:hover{border-color:var(--verde);color:var(--verde);background:rgba(0,200,83,.1);}
+  .toast{position:fixed;bottom:30px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--bg3);border:1px solid rgba(0,200,83,.4);color:var(--verde);font-size:13px;font-weight:500;padding:10px 20px;border-radius:8px;opacity:0;transition:all .3s;pointer-events:none;z-index:300;white-space:nowrap;}
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+  .toast.error{border-color:rgba(255,68,68,.4);color:#ff6b6b;}
+  .locked-banner{background:rgba(255,214,0,.08);border:1px solid rgba(255,214,0,.2);border-radius:10px;padding:10px 14px;font-size:12px;color:var(--oro);margin-bottom:1rem;}
+  @media(max-width:800px){.wrapper{grid-template-columns:1fr;}.panel-side{max-height:none;position:static;}}
+</style>
+</head>
+<body>
+<nav>
+  <a href="hub.html" class="nav-logo"><div class="dot"></div>PRODE MUNDIAL</a>
+  <div style="font-family:'Bebas Neue',sans-serif;font-size:15px;letter-spacing:2px;color:var(--muted)">Mi equipo fantasy</div>
+  <div style="display:flex;gap:10px;align-items:center">
+    <button class="save-btn-nav" id="saveBtn" onclick="saveTeam()">Guardar equipo</button>
+  </div>
+</nav>
+
+<div class="wrapper">
+  <div class="field-side">
+    <div style="display:flex;align-items:flex-end;justify-content:space-between">
+      <div class="field-title"><span class="sub">Armá tu equipo · 11 titulares + 3 suplentes</span>MI EQUIPO</div>
+      <div style="display:flex;flex-direction:column;gap:6px;align-items:flex-end">
+        <div style="display:flex;gap:10px;">
+          <div class="slot-pill"><span class="num ok" id="countFilled">0</span> elegidos</div>
+          <div class="slot-pill"><span class="num" id="countLeft">11</span> restantes</div>
+        </div>
+      </div>
+    </div>
+
+    <div id="lockedBanner" class="locked-banner" style="display:none">🔒 El equipo está bloqueado — el torneo ya comenzó.</div>
+
+    <div class="field">
+      <div class="field-zone"><div class="zone-label">Delanteros</div><div class="zone-players" id="zone-del"></div></div>
+      <div class="field-zone"><div class="zone-label">Mediocampistas</div><div class="zone-players" id="zone-med"></div></div>
+      <div class="field-zone"><div class="zone-label">Defensores</div><div class="zone-players" id="zone-def"></div></div>
+      <div class="field-zone"><div class="zone-label">Arquero</div><div class="zone-players" id="zone-arq"></div></div>
+    </div>
+
+    <div class="bench-section">
+      <div class="bench-title">Suplentes</div>
+      <div class="bench-row">
+        <div class="bench-chip" id="bench-sup-def" onclick="openSlot('sup-def')"></div>
+        <div class="bench-chip" id="bench-sup-med" onclick="openSlot('sup-med')"></div>
+        <div class="bench-chip" id="bench-sup-del" onclick="openSlot('sup-del')"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel-side">
+    <div class="panel-header">
+      <h3>Elegir jugador</h3>
+      <div class="search-box">
+        <span class="search-icon">🔍</span>
+        <input type="text" id="searchInput" placeholder="Buscar jugador o selección..." oninput="renderList()">
+      </div>
+      <div class="pos-filters">
+        <button class="pf-btn active" onclick="setPosFilter('all',this)">Todos</button>
+        <button class="pf-btn" onclick="setPosFilter('arquero',this)">Arq</button>
+        <button class="pf-btn" onclick="setPosFilter('defensor',this)">Def</button>
+        <button class="pf-btn" onclick="setPosFilter('mediocampista',this)">Med</button>
+        <button class="pf-btn" onclick="setPosFilter('delantero',this)">Del</button>
+      </div>
+    </div>
+    <div class="player-list" id="playerList"><div style="padding:2rem;text-align:center;color:var(--muted)">Cargando jugadores...</div></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  const SUPABASE_URL = "https://ipmyezwxpxnyukyurhqd.supabase.co"
+  const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlwbXllend4cHhueXVreXVyaHFkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc0NjA2OTksImV4cCI6MjA5MzAzNjY5OX0.yRG5H0rsGC6lHcIt1kqPzzzyIUQ8s0ttD73g3Q8rJcI"
+  const { createClient } = supabase
+  const db = createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+
+  let currentUser = null
+  let allPlayers = []
+  let posFilter = 'all'
+  let activeSlot = null
+  let bloqueado = false
+
+  const slotPos = {
+    arq:'arquero', def1:'defensor',def2:'defensor',def3:'defensor',def4:'defensor',
+    med1:'mediocampista',med2:'mediocampista',med3:'mediocampista',
+    del1:'delantero',del2:'delantero',del3:'delantero',
+    'sup-def':'defensor','sup-med':'mediocampista','sup-del':'delantero'
+  }
+
+  const team = { arq:null,def1:null,def2:null,def3:null,def4:null,med1:null,med2:null,med3:null,del1:null,del2:null,del3:null,'sup-def':null,'sup-med':null,'sup-del':null }
+
+  const posLabel = {arquero:'Arquero',defensor:'Defensor',mediocampista:'Medioc.',delantero:'Delantero'}
+  const posBadge = {arquero:'arq',defensor:'def',mediocampista:'med',delantero:'del'}
+
+  async function init() {
+    const { data } = await db.auth.getSession()
+    if (!data.session) { window.location.href = 'login.html'; return }
+    currentUser = data.session.user
+    await Promise.all([cargarJugadores(), cargarMiEquipo()])
+    renderField()
+    renderList()
+  }
+
+  async function cargarJugadores() {
+    const { data } = await db
+      .from('jugadores')
+      .select('id,nombre,posicion,foto_url,pais:pais_id(nombre,url_bandera)')
+      .eq('activo',true)
+      .order('nombre')
+    allPlayers = data || []
+  }
+
+  async function cargarMiEquipo() {
+    const { data } = await db
+      .from('equipos_fantasy')
+      .select('bloqueado,arquero_id,def1_id,def2_id,def3_id,def4_id,med1_id,med2_id,med3_id,del1_id,del2_id,del3_id,suplente_def_id,suplente_med_id,suplente_del_id')
+      .eq('usuario_id', currentUser.id)
+      .single()
+    if (!data) return
+    bloqueado = data.bloqueado
+    if (bloqueado) {
+      document.getElementById('lockedBanner').style.display = 'block'
+      document.getElementById('saveBtn').disabled = true
+    }
+    team.arq = data.arquero_id
+    team.def1 = data.def1_id; team.def2 = data.def2_id; team.def3 = data.def3_id; team.def4 = data.def4_id
+    team.med1 = data.med1_id; team.med2 = data.med2_id; team.med3 = data.med3_id
+    team.del1 = data.del1_id; team.del2 = data.del2_id; team.del3 = data.del3_id
+    team['sup-def'] = data.suplente_def_id; team['sup-med'] = data.suplente_med_id; team['sup-del'] = data.suplente_del_id
+  }
+
+  function getPlayer(id) { return allPlayers.find(p => p.id === id) }
+  function usedIds() { return Object.values(team).filter(Boolean) }
+  function countFilled() { return Object.entries(team).filter(([k,v]) => v && !k.startsWith('sup')).length }
+
+  function updateCounters() {
+    const f = countFilled()
+    document.getElementById('countFilled').textContent = f
+    document.getElementById('countLeft').textContent = 11 - f
+  }
+
+  function renderField() {
+    const zones = { arq:['arq'], def:['def1','def2','def3','def4'], med:['med1','med2','med3'], del:['del1','del2','del3'] }
+    for (const [zone, slots] of Object.entries(zones)) {
+      document.getElementById('zone-'+zone).innerHTML = slots.map(slotId => {
+        const p = team[slotId] ? getPlayer(team[slotId]) : null
+        const pos = slotPos[slotId]
+        if (p) {
+          const flagHtml = p.pais?.url_bandera
+            ? `<img class="player-flag-img" src="${p.pais.url_bandera}">`
+            : '🏳'
+          return `<div class="player-slot filled" onclick="openSlot('${slotId}')">
+            <div class="player-circle">${flagHtml}<button class="remove-btn" onclick="event.stopPropagation();removePlayer('${slotId}')">✕</button></div>
+            <div class="player-name">${p.nombre}</div>
+          </div>`
+        } else {
+          return `<div class="player-slot" onclick="openSlot('${slotId}')">
+            <div class="player-circle"><span style="font-size:18px;color:rgba(255,255,255,.15)">+</span></div>
+            <div class="empty-slot-label">${posLabel[pos]}</div>
+          </div>`
+        }
+      }).join('')
+    }
+
+    // Suplentes
+    const supLabels = {'sup-def':'Suplente defensor','sup-med':'Suplente mediocampista','sup-del':'Suplente delantero'}
+    const supIds = {'sup-def':'bench-sup-def','sup-med':'bench-sup-med','sup-del':'bench-sup-del'}
+    for (const [slotId, benchId] of Object.entries(supIds)) {
+      const bench = document.getElementById(benchId)
+      const p = team[slotId] ? getPlayer(team[slotId]) : null
+      if (p) {
+        const flagHtml = p.pais?.url_bandera ? `<img class="pi-flag-img" src="${p.pais.url_bandera}">` : '🏳'
+        bench.className = 'bench-chip filled'
+        bench.innerHTML = `<div class="bench-flag">${flagHtml}</div><div class="bench-info"><div class="bench-name">${p.nombre}</div><div class="bench-pos">${supLabels[slotId]}</div></div><div class="bench-remove" onclick="event.stopPropagation();removePlayer('${slotId}')">✕</div>`
+      } else {
+        bench.className = 'bench-chip'
+        bench.innerHTML = `<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;flex:1;"><div style="font-size:18px;color:rgba(255,255,255,.15)">+</div><div style="font-size:10px;color:rgba(255,255,255,.2);text-align:center">${supLabels[slotId]}</div></div>`
+      }
+    }
+    updateCounters()
+  }
+
+  function openSlot(slotId) {
+    if (bloqueado) { showToast('El equipo está bloqueado','error'); return }
+    activeSlot = slotId
+    posFilter = slotPos[slotId]
+    document.querySelectorAll('.pf-btn').forEach(b => b.classList.remove('active'))
+    document.querySelectorAll('.pf-btn').forEach(b => {
+      const map = {arquero:'arq',defensor:'def',mediocampista:'med',delantero:'del'}
+      if (b.textContent.trim().toLowerCase().startsWith(map[posFilter]?.slice(0,3)||'')) b.classList.add('active')
+    })
+    renderList()
+    document.querySelector('.panel-side').scrollIntoView({behavior:'smooth',block:'start'})
+  }
+
+  function addToSlot(playerId) {
+    if (!activeSlot) { showToast('Hacé click en un slot primero','error'); return }
+    const p = getPlayer(playerId)
+    if (usedIds().includes(playerId)) { showToast(`${p.nombre} ya está en tu equipo`,'error'); return }
+    if (p.posicion !== slotPos[activeSlot]) { showToast(`Este slot es para ${slotPos[activeSlot]}`,'error'); return }
+    team[activeSlot] = playerId
+    activeSlot = null
+    renderField(); renderList()
+    showToast(`${p.nombre} agregado`)
+  }
+
+  function removePlayer(slotId) {
+    if (bloqueado) return
+    team[slotId] = null
+    renderField(); renderList()
+  }
+
+  function renderList() {
+    const q = document.getElementById('searchInput').value.toLowerCase()
+    const used = usedIds()
+    const filtered = allPlayers.filter(p => {
+      const matchPos = posFilter === 'all' || p.posicion === posFilter
+      const matchSearch = !q || p.nombre.toLowerCase().includes(q) || (p.pais?.nombre||'').toLowerCase().includes(q)
+      return matchPos && matchSearch
+    })
+    const groups = {}
+    filtered.forEach(p => { if(!groups[p.posicion]) groups[p.posicion]=[]; groups[p.posicion].push(p) })
+    const order = ['arquero','defensor','mediocampista','delantero']
+    let html = ''
+    order.forEach(pos => {
+      if (!groups[pos]) return
+      html += `<div class="list-section-title">${posLabel[pos]}s</div>`
+      groups[pos].forEach(p => {
+        const isUsed = used.includes(p.id)
+        const flagHtml = p.pais?.url_bandera ? `<img class="pi-flag-img" src="${p.pais.url_bandera}">` : '<span class="pi-flag">🏳</span>'
+        html += `<div class="player-item ${isUsed?'selected':''}" onclick="${isUsed?'':(`addToSlot('${p.id}')`)}">
+          ${flagHtml}
+          <div class="pi-info"><div class="pi-name">${p.nombre}</div><div class="pi-meta">${p.pais?.nombre||''} · ${posLabel[p.posicion]}</div></div>
+          <span class="pos-badge ${posBadge[p.posicion]}">${posLabel[p.posicion]}</span>
+          <button class="add-btn" ${isUsed?'disabled style="opacity:.4;cursor:default"':''} onclick="event.stopPropagation();${isUsed?'':(`addToSlot('${p.id}')`)}">
+            ${isUsed?'✓':'+'}
+          </button>
+        </div>`
+      })
+    })
+    document.getElementById('playerList').innerHTML = html || '<div style="padding:2rem;text-align:center;color:var(--muted);font-size:13px">Sin resultados</div>'
+  }
+
+  function setPosFilter(pos, btn) {
+    posFilter = pos
+    document.querySelectorAll('.pf-btn').forEach(b => b.classList.remove('active'))
+    btn.classList.add('active')
+    renderList()
+  }
+
+  async function saveTeam() {
+    const f = countFilled()
+    if (f < 11) { showToast(`Faltan ${11-f} jugadores`,'error'); return }
+    const missing = ['sup-def','sup-med','sup-del'].filter(k => !team[k])
+    if (missing.length) { showToast('Faltan suplentes','error'); return }
+
+    const btn = document.getElementById('saveBtn')
+    btn.disabled = true; btn.textContent = 'Guardando...'
+
+    const { error } = await db.from('equipos_fantasy').upsert({
+      usuario_id: currentUser.id,
+      arquero_id: team.arq,
+      def1_id: team.def1, def2_id: team.def2, def3_id: team.def3, def4_id: team.def4,
+      med1_id: team.med1, med2_id: team.med2, med3_id: team.med3,
+      del1_id: team.del1, del2_id: team.del2, del3_id: team.del3,
+      suplente_def_id: team['sup-def'], suplente_med_id: team['sup-med'], suplente_del_id: team['sup-del']
+    }, { onConflict: 'usuario_id' })
+
+    btn.disabled = false; btn.textContent = 'Guardar equipo'
+    if (error) { showToast('Error al guardar','error'); return }
+    showToast('¡Equipo guardado!')
+  }
+
+  function showToast(msg, type) {
+    const t = document.getElementById('toast')
+    t.textContent = msg; t.className = 'toast' + (type==='error'?' error':'')
+    t.classList.add('show')
+    setTimeout(() => t.classList.remove('show'), 2800)
+  }
+
+  init()
+</script>
+</body>
+</html>

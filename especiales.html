@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Especiales · Prode Mundial 2026</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root{--verde:#00C853;--oro:#FFD600;--oro-dim:rgba(255,214,0,0.12);--bg:#0a0e17;--bg2:#111827;--bg3:#1a2235;--texto:#e8edf5;--muted:#6b7a99;--border:rgba(255,255,255,0.07);--card:rgba(255,255,255,0.04);}
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--texto);min-height:100vh;}
+  body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellipse 70% 50% at 15% 10%,rgba(255,214,0,0.06) 0%,transparent 60%);pointer-events:none;z-index:0;}
+  nav{position:sticky;top:0;z-index:100;background:rgba(10,14,23,0.9);backdrop-filter:blur(12px);border-bottom:1px solid var(--border);padding:0 2rem;height:56px;display:flex;align-items:center;justify-content:space-between;}
+  .nav-logo{font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:2px;display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--texto);}
+  .nav-logo .dot{width:8px;height:8px;border-radius:50%;background:var(--oro);box-shadow:0 0 8px var(--oro);animation:pulse 2s ease-in-out infinite;}
+  @keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.6;transform:scale(.8)}}
+  .save-btn-nav{background:var(--oro);color:#000;font-family:'Bebas Neue',sans-serif;font-size:14px;letter-spacing:1px;border:none;border-radius:6px;padding:7px 18px;cursor:pointer;transition:all .2s;}
+  .save-btn-nav:hover{background:#e6c200;}
+  .save-btn-nav:disabled{background:var(--muted);cursor:default;}
+  @keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+  .wrapper{position:relative;z-index:1;max-width:960px;margin:0 auto;padding:2rem 2rem 5rem;}
+  .page-header{display:flex;align-items:flex-end;justify-content:space-between;padding-bottom:1.5rem;border-bottom:1px solid var(--border);margin-bottom:2rem;animation:fadeUp .35s ease both;}
+  .page-title{font-family:'Bebas Neue',sans-serif;font-size:52px;line-height:1;letter-spacing:2px;}
+  .page-title .sub{font-family:'DM Sans',sans-serif;font-size:12px;color:var(--muted);font-weight:400;letter-spacing:0;display:block;margin-bottom:4px;}
+  .page-title .highlight{color:var(--oro);}
+  .pts-total-card{background:var(--oro-dim);border:1px solid rgba(255,214,0,0.2);border-radius:12px;padding:12px 20px;text-align:right;}
+  .pts-total-card .val{font-family:'Bebas Neue',sans-serif;font-size:40px;color:var(--oro);line-height:1;}
+  .pts-total-card .lbl{font-size:11px;color:rgba(255,214,0,0.6);text-transform:uppercase;letter-spacing:.5px;margin-top:2px;}
+  .deadline-warn{background:rgba(255,100,0,0.07);border:1px solid rgba(255,100,0,0.2);border-radius:10px;padding:10px 16px;font-size:12px;color:#ff9966;margin-bottom:2rem;display:flex;align-items:center;gap:10px;}
+  .progress-bar-wrap{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:12px 16px;margin-bottom:2rem;display:flex;align-items:center;gap:16px;}
+  .pb-track{flex:1;height:6px;background:rgba(255,255,255,0.06);border-radius:3px;overflow:hidden;}
+  .pb-fill{height:100%;background:linear-gradient(90deg,var(--oro),var(--verde));border-radius:3px;transition:width .5s ease;}
+  .pb-count{font-family:'Bebas Neue',sans-serif;font-size:18px;color:var(--oro);flex-shrink:0;}
+  .sections-grid{display:grid;grid-template-columns:1fr 1fr;gap:1.25rem;}
+  .special-card{background:var(--bg2);border:1px solid var(--border);border-radius:16px;overflow:hidden;transition:border-color .2s;}
+  .special-card:hover{border-color:rgba(255,214,0,0.2);}
+  .special-card.selected{border-color:rgba(255,214,0,0.35);}
+  .special-card.wide{grid-column:1/-1;}
+  .card-head{display:flex;align-items:center;gap:12px;padding:1rem 1.25rem;border-bottom:1px solid var(--border);background:rgba(255,255,255,0.02);}
+  .card-icon{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;}
+  .card-title{font-size:14px;font-weight:500;}
+  .card-pts{font-family:'Bebas Neue',sans-serif;font-size:18px;color:var(--oro);}
+  .card-body{padding:1rem 1.25rem;}
+  .pick-made{display:flex;align-items:center;gap:12px;background:var(--card);border:1px solid rgba(255,214,0,0.2);border-radius:10px;padding:10px 14px;cursor:pointer;transition:all .2s;}
+  .pick-made:hover{border-color:rgba(255,214,0,0.4);}
+  .pick-flag{font-size:28px;}
+  .pick-flag-img{width:36px;height:24px;border-radius:3px;object-fit:cover;}
+  .pick-name{font-size:14px;font-weight:500;}
+  .pick-sub{font-size:11px;color:var(--muted);margin-top:2px;}
+  .pick-check{margin-left:auto;color:var(--verde);font-size:16px;}
+  .pick-empty{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;border:1px dashed rgba(255,255,255,0.1);border-radius:10px;padding:1.25rem;cursor:pointer;transition:all .2s;text-align:center;}
+  .pick-empty:hover{border-color:rgba(255,214,0,0.3);background:rgba(255,214,0,0.02);}
+  .pick-empty .plus{font-size:24px;color:rgba(255,255,255,0.15);}
+  .pick-empty .lbl{font-size:12px;color:var(--muted);}
+  .podio{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;}
+  .podio-slot{display:flex;flex-direction:column;align-items:center;gap:8px;padding:1rem;border-radius:12px;border:1px dashed rgba(255,255,255,0.08);cursor:pointer;transition:all .2s;text-align:center;position:relative;}
+  .podio-slot:hover{border-color:rgba(255,214,0,0.3);background:rgba(255,214,0,0.02);}
+  .podio-slot.filled{border-style:solid;}
+  .podio-slot.gold-slot{border-color:rgba(255,214,0,0.35);background:rgba(255,214,0,0.04);}
+  .podio-slot.silver-slot{border-color:rgba(180,180,200,0.25);background:rgba(180,180,200,0.04);}
+  .podio-slot.bronze-slot{border-color:rgba(200,130,60,0.25);background:rgba(200,130,60,0.04);}
+  .podio-rank{font-family:'Bebas Neue',sans-serif;font-size:13px;letter-spacing:1.5px;}
+  .podio-rank.gold{color:var(--oro);}
+  .podio-rank.silver{color:#b4b4c8;}
+  .podio-rank.bronze{color:#c8823c;}
+  .podio-pts{position:absolute;top:8px;right:10px;font-family:'Bebas Neue',sans-serif;font-size:13px;}
+  .podio-pts.gold{color:var(--oro);}
+  .podio-pts.silver{color:#b4b4c8;}
+  .podio-pts.bronze{color:#c8823c;}
+  .podio-flag{font-size:36px;line-height:1;}
+  .podio-flag-img{width:52px;height:35px;border-radius:5px;object-fit:cover;}
+  .podio-name{font-size:13px;font-weight:500;}
+  .modal-overlay{display:none;position:fixed;inset:0;z-index:500;background:rgba(0,0,0,0.7);backdrop-filter:blur(6px);align-items:flex-end;justify-content:center;}
+  .modal-overlay.show{display:flex;animation:slideUp .25s ease both;}
+  @keyframes slideUp{from{opacity:0;transform:translateY(30px)}to{opacity:1;transform:translateY(0)}}
+  .modal-box{background:var(--bg2);border:1px solid var(--border);border-radius:20px 20px 0 0;width:100%;max-width:960px;max-height:80vh;display:flex;flex-direction:column;}
+  .modal-header{padding:1.25rem 1.5rem;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
+  .modal-header h3{font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:1px;}
+  .modal-close{width:28px;height:28px;border-radius:50%;border:1px solid var(--border);background:none;color:var(--muted);cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;transition:all .15s;}
+  .modal-search{padding:1rem 1.5rem;border-bottom:1px solid var(--border);flex-shrink:0;}
+  .modal-search input{width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:8px;color:var(--texto);font-family:'DM Sans',sans-serif;font-size:13px;padding:9px 14px;outline:none;transition:border-color .2s;}
+  .modal-search input:focus{border-color:var(--oro);}
+  .modal-list{overflow-y:auto;flex:1;}
+  .modal-list::-webkit-scrollbar{width:4px;}
+  .modal-list::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px;}
+  .modal-item{display:flex;align-items:center;gap:12px;padding:12px 1.5rem;border-bottom:1px solid var(--border);cursor:pointer;transition:background .15s;}
+  .modal-item:hover{background:rgba(255,255,255,0.03);}
+  .mi-flag{font-size:22px;flex-shrink:0;}
+  .mi-flag-img{width:30px;height:20px;border-radius:3px;object-fit:cover;flex-shrink:0;}
+  .mi-info{flex:1;}
+  .mi-name{font-size:14px;font-weight:500;}
+  .mi-sub{font-size:11px;color:var(--muted);}
+  .mi-pts{font-family:'Bebas Neue',sans-serif;font-size:18px;color:var(--oro);}
+  .sticky-bar{position:fixed;bottom:0;left:0;right:0;z-index:200;background:rgba(10,14,23,0.95);backdrop-filter:blur(12px);border-top:1px solid var(--border);padding:1rem 2rem;display:flex;align-items:center;justify-content:space-between;gap:1rem;}
+  .bar-info{font-size:13px;color:var(--muted);}
+  .bar-info strong{color:var(--texto);}
+  .bar-pts{font-family:'Bebas Neue',sans-serif;font-size:22px;color:var(--oro);}
+  .btn-save{background:var(--oro);color:#000;font-family:'Bebas Neue',sans-serif;font-size:16px;letter-spacing:1.5px;border:none;border-radius:8px;padding:10px 32px;cursor:pointer;transition:all .2s;}
+  .btn-save:hover{background:#e6c200;transform:translateY(-1px);}
+  .toast{position:fixed;bottom:90px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--bg3);border:1px solid rgba(255,214,0,.4);color:var(--oro);font-size:13px;font-weight:500;padding:10px 20px;border-radius:8px;opacity:0;transition:all .3s;pointer-events:none;z-index:300;white-space:nowrap;}
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+  @media(max-width:640px){.sections-grid{grid-template-columns:1fr;}.podio{grid-template-columns:1fr;}.special-card.wide{grid-column:auto;}}
+</style>
+</head>
+<body>
+<nav>
+  <a href="hub.html" class="nav-logo"><div class="dot"></div>PRODE MUNDIAL</a>
+  <div style="font-family:'Bebas Neue',sans-serif;font-size:15px;letter-spacing:2px;color:var(--muted)">Predicciones especiales</div>
+  <button class="save-btn-nav" id="saveBtn" onclick="saveAll()">Guardar</button>
+</nav>
+
+<div class="wrapper">
+  <div class="page-header">
+    <div class="page-title"><span class="sub">Una sola vez · No se modifican después del inicio</span>PREDICCIONES<br><span class="highlight">ESPECIALES</span></div>
+    <div class="pts-total-card"><div class="val" id="totalPts">0</div><div class="lbl">pts en juego</div></div>
+  </div>
+
+  <div class="deadline-warn"><span style="font-size:18px">⚡</span><span>Estas predicciones se bloquean al inicio del torneo y no se pueden cambiar después.</span></div>
+
+  <div class="progress-bar-wrap">
+    <div style="font-size:13px;color:var(--muted);flex-shrink:0">Completado</div>
+    <div class="pb-track"><div class="pb-fill" id="pbFill" style="width:0%"></div></div>
+    <div class="pb-count" id="pbCount">0/7</div>
+  </div>
+
+  <div class="sections-grid">
+
+    <div class="special-card wide" id="card-podio">
+      <div class="card-head">
+        <div class="card-icon" style="background:rgba(255,214,0,.12)">🏆</div>
+        <div style="flex:1"><div class="card-title">Podio del mundial</div><div style="font-size:12px;color:var(--muted);margin-top:2px">Campeón, subcampeón y tercer puesto</div></div>
+        <div class="card-pts">25 + 20 + 15 pts</div>
+      </div>
+      <div class="card-body">
+        <div class="podio">
+          <div class="podio-slot gold-slot" id="slot-campeon" onclick="openModal('campeon','paises')"><div class="podio-rank gold">Campeón</div><div class="podio-pts gold">25 pts</div><div class="podio-flag" id="flag-campeon">🌍</div><div class="podio-name" id="name-campeon" style="color:var(--muted)">Elegir</div></div>
+          <div class="podio-slot silver-slot" id="slot-subcampeon" onclick="openModal('subcampeon','paises')"><div class="podio-rank silver">Subcampeón</div><div class="podio-pts silver">20 pts</div><div class="podio-flag" id="flag-subcampeon">🌍</div><div class="podio-name" id="name-subcampeon" style="color:var(--muted)">Elegir</div></div>
+          <div class="podio-slot bronze-slot" id="slot-tercero" onclick="openModal('tercero','paises')"><div class="podio-rank bronze">3er puesto</div><div class="podio-pts bronze">15 pts</div><div class="podio-flag" id="flag-tercero">🌍</div><div class="podio-name" id="name-tercero" style="color:var(--muted)">Elegir</div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="special-card" id="card-goleador">
+      <div class="card-head"><div class="card-icon" style="background:rgba(0,200,83,.1)">⚽</div><div style="flex:1"><div class="card-title">Goleador del torneo</div></div><div class="card-pts">10 pts</div></div>
+      <div class="card-body"><div class="pick-empty" id="pick-goleador" onclick="openModal('goleador','jugadores')"><div class="plus">+</div><div class="lbl">Elegir jugador</div></div></div>
+    </div>
+
+    <div class="special-card" id="card-mvp">
+      <div class="card-head"><div class="card-icon" style="background:rgba(120,100,255,.12)">⭐</div><div style="flex:1"><div class="card-title">Mejor jugador</div></div><div class="card-pts">10 pts</div></div>
+      <div class="card-body"><div class="pick-empty" id="pick-mvp" onclick="openModal('mvp','jugadores')"><div class="plus">+</div><div class="lbl">Elegir jugador</div></div></div>
+    </div>
+
+    <div class="special-card" id="card-arquero">
+      <div class="card-head"><div class="card-icon" style="background:rgba(55,138,221,.12)">🧤</div><div style="flex:1"><div class="card-title">Mejor arquero</div></div><div class="card-pts">10 pts</div></div>
+      <div class="card-body"><div class="pick-empty" id="pick-arquero" onclick="openModal('arquero','arqueros')"><div class="plus">+</div><div class="lbl">Elegir arquero</div></div></div>
+    </div>
+
+    <div class="special-card" id="card-revelacion">
+      <div class="card-head"><div class="card-icon" style="background:rgba(255,80,80,.12)">🚀</div><div style="flex:1"><div class="card-title">Revelación del torneo</div></div><div class="card-pts">10 pts</div></div>
+      <div class="card-body"><div class="pick-empty" id="pick-revelacion" onclick="openModal('revelacion','jugadores')"><div class="plus">+</div><div class="lbl">Elegir jugador</div></div></div>
+    </div>
+
+  </div>
+</div>
+
+<div class="sticky-bar">
+  <div class="bar-info"><strong id="barDone">0</strong> de 7 predicciones completadas</div>
+  <div class="bar-pts" id="barPts">0 pts en juego</div>
+  <button class="btn-save" onclick="saveAll()">Confirmar predicciones</button>
+</div>
+
+<div class="modal-overlay" id="modal" onclick="maybeClose(event)">
+  <div class="modal-box">
+    <div class="modal-header"><h3 id="modalTitle">Elegir</h3><button class="modal-close" onclick="closeModal()">✕</button></div>
+    <div class="modal-search"><input type="text" id="modalSearch" placeholder="Buscar..." oninput="renderModal()"></div>
+    <div class="modal-list" id="modalList"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  const SUPABASE_URL = "https://ipmyezwxpxnyukyurhqd.supabase.co"
+  const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlwbXllend4cHhueXVreXVyaHFkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc0NjA2OTksImV4cCI6MjA5MzAzNjY5OX0.yRG5H0rsGC6lHcIt1kqPzzzyIUQ8s0ttD73g3Q8rJcI"
+  const { createClient } = supabase
+  const db = createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+
+  let currentUser = null
+  let paises = [], jugadores = []
+  let activeField = null, activeType = null
+  let bloqueado = false
+  const ptsPorCampo = {campeon:25,subcampeon:20,tercero:15,goleador:10,mvp:10,arquero:10,revelacion:10}
+  const picks = {campeon:null,subcampeon:null,tercero:null,goleador:null,mvp:null,arquero:null,revelacion:null}
+
+  async function init() {
+    const { data } = await db.auth.getSession()
+    if (!data.session) { window.location.href = 'login.html'; return }
+    currentUser = data.session.user
+    await Promise.all([cargarPaises(), cargarJugadores(), cargarMisPicks()])
+    updateGlobal()
+  }
+
+  async function cargarPaises() {
+    const { data } = await db.from('paises').select('id,nombre,url_bandera,grupo').order('nombre')
+    paises = data || []
+  }
+
+  async function cargarJugadores() {
+    const { data } = await db.from('jugadores').select('id,nombre,posicion,pais:pais_id(nombre,url_bandera)').eq('activo',true).order('nombre')
+    jugadores = data || []
+  }
+
+  async function cargarMisPicks() {
+    const { data } = await db.from('predicciones_especiales').select('*').eq('usuario_id',currentUser.id).single()
+    if (!data) return
+    bloqueado = data.bloqueado
+    if (data.bloqueado) document.getElementById('saveBtn').disabled = true
+
+    // Reconstruir picks desde IDs
+    if (data.campeon_id) { const p = paises.find(x=>x.id===data.campeon_id); if(p) picks.campeon = {id:p.id,flag:null,flagUrl:p.url_bandera,name:p.nombre,sub:'Campeón'} }
+    if (data.subcampeon_id) { const p = paises.find(x=>x.id===data.subcampeon_id); if(p) picks.subcampeon = {id:p.id,flag:null,flagUrl:p.url_bandera,name:p.nombre,sub:'Subcampeón'} }
+    if (data.tercero_id) { const p = paises.find(x=>x.id===data.tercero_id); if(p) picks.tercero = {id:p.id,flag:null,flagUrl:p.url_bandera,name:p.nombre,sub:'3er puesto'} }
+
+    const fields = {goleador:'goleador_id',mvp:'mejor_jugador_id',arquero:'mejor_arquero_id',revelacion:'revelacion_id'}
+    for (const [field,col] of Object.entries(fields)) {
+      if (data[col]) {
+        const j = jugadores.find(x=>x.id===data[col])
+        if (j) picks[field] = {id:j.id,flag:null,flagUrl:j.pais?.url_bandera,name:j.nombre,sub:`${j.pais?.nombre||''} · ${j.posicion}`}
+      }
+    }
+
+    // Renderizar picks existentes
+    ;['campeon','subcampeon','tercero'].forEach(f => { if(picks[f]) updatePodioUI(f) })
+    ;['goleador','mvp','arquero','revelacion'].forEach(f => { if(picks[f]) updateCardUI(f) })
+  }
+
+  function openModal(field, type) {
+    if (bloqueado) { showToast('Las predicciones están bloqueadas'); return }
+    activeField = field; activeType = type
+    const titles = {campeon:'Elegir campeón',subcampeon:'Elegir subcampeón',tercero:'Elegir 3er puesto',goleador:'Goleador del torneo',mvp:'Mejor jugador',arquero:'Mejor arquero',revelacion:'Revelación'}
+    document.getElementById('modalTitle').textContent = titles[field]
+    document.getElementById('modalSearch').value = ''
+    renderModal()
+    document.getElementById('modal').classList.add('show')
+    setTimeout(() => document.getElementById('modalSearch').focus(), 100)
+  }
+
+  function closeModal() { document.getElementById('modal').classList.remove('show') }
+  function maybeClose(e) { if (e.target === document.getElementById('modal')) closeModal() }
+
+  function renderModal() {
+    const q = document.getElementById('modalSearch').value.toLowerCase()
+    let items = []
+
+    if (activeType === 'paises') {
+      items = paises.filter(p => p.nombre.toLowerCase().includes(q))
+      const already = ['campeon','subcampeon','tercero'].filter(k => k !== activeField && picks[k]).map(k => picks[k].id)
+      document.getElementById('modalList').innerHTML = items.map(p => {
+        const disabled = already.includes(p.id)
+        const flagHtml = p.url_bandera ? `<img class="mi-flag-img" src="${p.url_bandera}">` : '<span class="mi-flag">🌍</span>'
+        return `<div class="modal-item" style="${disabled?'opacity:.4;cursor:default':''}" onclick="${disabled?'':(`pickItem({id:'${p.id}',flagUrl:'${p.url_bandera||''}',name:'${p.nombre.replace(/'/g,"\\'")}',sub:'Grupo ${p.grupo||''}'})`)}">
+          ${flagHtml}<div class="mi-info"><div class="mi-name">${p.nombre}</div><div class="mi-sub">Grupo ${p.grupo||'?'}</div></div>
+          <div class="mi-pts">${ptsPorCampo[activeField]} pts</div></div>`
+      }).join('')
+    } else {
+      let pool = jugadores
+      if (activeType === 'arqueros') pool = jugadores.filter(j => j.posicion === 'arquero')
+      items = pool.filter(j => j.nombre.toLowerCase().includes(q) || (j.pais?.nombre||'').toLowerCase().includes(q))
+      document.getElementById('modalList').innerHTML = items.map(j => {
+        const flagHtml = j.pais?.url_bandera ? `<img class="mi-flag-img" src="${j.pais.url_bandera}">` : '<span class="mi-flag">🏳</span>'
+        return `<div class="modal-item" onclick="pickItem({id:'${j.id}',flagUrl:'${j.pais?.url_bandera||''}',name:'${j.nombre.replace(/'/g,"\\'")}',sub:'${(j.pais?.nombre||'')} · ${j.posicion}'})">
+          ${flagHtml}<div class="mi-info"><div class="mi-name">${j.nombre}</div><div class="mi-sub">${j.pais?.nombre||''} · ${j.posicion}</div></div>
+          <div class="mi-pts">${ptsPorCampo[activeField]} pts</div></div>`
+      }).join('')
+    }
+  }
+
+  function pickItem(item) {
+    picks[activeField] = item
+    if (['campeon','subcampeon','tercero'].includes(activeField)) updatePodioUI(activeField)
+    else updateCardUI(activeField)
+    updateGlobal()
+    closeModal()
+    showToast(`${item.name} elegido · +${ptsPorCampo[activeField]} pts`)
+  }
+
+  function flagEl(url, fallback='🌍') {
+    return url ? `<img style="width:44px;height:29px;border-radius:5px;object-fit:cover" src="${url}">` : fallback
+  }
+
+  function updatePodioUI(field) {
+    const pick = picks[field]
+    const slot = document.getElementById('slot-'+field)
+    const flagEl_el = document.getElementById('flag-'+field)
+    const nameEl = document.getElementById('name-'+field)
+    if (pick) {
+      slot.classList.add('filled')
+      flagEl_el.innerHTML = pick.flagUrl ? `<img class="podio-flag-img" src="${pick.flagUrl}">` : '🌍'
+      nameEl.textContent = pick.name; nameEl.style.color = ''
+    } else {
+      slot.classList.remove('filled')
+      flagEl_el.innerHTML = '🌍'
+      nameEl.textContent = 'Elegir'; nameEl.style.color = 'var(--muted)'
+    }
+  }
+
+  function updateCardUI(field) {
+    const pick = picks[field]
+    const el = document.getElementById('pick-'+field)
+    const card = document.getElementById('card-'+field)
+    if (pick) {
+      const flagHtml = pick.flagUrl ? `<img class="pick-flag-img" src="${pick.flagUrl}">` : '<span class="pick-flag">🏳</span>'
+      el.className = 'pick-made'
+      el.innerHTML = `${flagHtml}<div><div class="pick-name">${pick.name}</div><div class="pick-sub">${pick.sub}</div></div><div class="pick-check">✓</div>`
+      el.onclick = () => openModal(field, activeType || getType(field))
+      card.classList.add('selected')
+    } else {
+      const labels = {goleador:'Elegir jugador',mvp:'Elegir jugador',arquero:'Elegir arquero',revelacion:'Elegir jugador'}
+      el.className = 'pick-empty'
+      el.innerHTML = `<div class="plus">+</div><div class="lbl">${labels[field]}</div>`
+      el.onclick = () => openModal(field, getType(field))
+      card.classList.remove('selected')
+    }
+  }
+
+  function getType(field) {
+    if (field==='arquero') return 'arqueros'
+    if (['campeon','subcampeon','tercero'].includes(field)) return 'paises'
+    return 'jugadores'
+  }
+
+  function updateGlobal() {
+    const done = Object.values(picks).filter(Boolean).length
+    const totalPts = Object.entries(picks).filter(([,v])=>v).reduce((a,[k])=>a+ptsPorCampo[k],0)
+    const pct = Math.round((done/7)*100)
+    document.getElementById('totalPts').textContent = totalPts
+    document.getElementById('pbFill').style.width = pct+'%'
+    document.getElementById('pbCount').textContent = done+'/7'
+    document.getElementById('barDone').textContent = done
+    document.getElementById('barPts').textContent = totalPts+' pts en juego'
+  }
+
+  async function saveAll() {
+    if (bloqueado) return
+    const done = Object.values(picks).filter(Boolean).length
+    if (done < 7) { showToast(`Faltan ${7-done} predicciones`); return }
+
+    // Buscar IDs de países
+    const getCampeonId = (field) => paises.find(p=>p.nombre===picks[field]?.name)?.id || picks[field]?.id
+    const getJugadorId = (field) => jugadores.find(j=>j.nombre===picks[field]?.name)?.id || picks[field]?.id
+
+    const btn = document.getElementById('saveBtn')
+    btn.disabled = true; btn.textContent = 'Guardando...'
+
+    const { error } = await db.from('predicciones_especiales').upsert({
+      usuario_id: currentUser.id,
+      campeon_id: getCampeonId('campeon'),
+      subcampeon_id: getCampeonId('subcampeon'),
+      tercero_id: getCampeonId('tercero'),
+      goleador_id: getJugadorId('goleador'),
+      mejor_jugador_id: getJugadorId('mvp'),
+      mejor_arquero_id: getJugadorId('arquero'),
+      revelacion_id: getJugadorId('revelacion')
+    }, { onConflict: 'usuario_id' })
+
+    btn.disabled = false; btn.textContent = 'Guardar'
+    if (error) { showToast('Error al guardar'); console.error(error); return }
+    showToast('¡Predicciones especiales guardadas!')
+  }
+
+  function showToast(msg) {
+    const t = document.getElementById('toast')
+    t.textContent = msg; t.classList.add('show')
+    setTimeout(() => t.classList.remove('show'), 2800)
+  }
+
+  init()
+</script>
+</body>
+</html>

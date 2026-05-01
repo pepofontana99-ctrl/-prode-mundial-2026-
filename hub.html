@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hub · Prode Mundial 2026</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root{--verde:#00C853;--verde-dark:#009624;--oro:#FFD600;--bg:#0a0e17;--bg2:#111827;--bg3:#1a2235;--texto:#e8edf5;--muted:#6b7a99;--border:rgba(255,255,255,0.07);--card:rgba(255,255,255,0.04);}
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--texto);min-height:100vh;}
+  body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellipse 80% 50% at 20% 10%,rgba(0,200,83,0.07) 0%,transparent 60%),radial-gradient(ellipse 60% 40% at 80% 80%,rgba(255,214,0,0.05) 0%,transparent 55%);pointer-events:none;z-index:0;}
+  nav{position:sticky;top:0;z-index:100;background:rgba(10,14,23,0.85);backdrop-filter:blur(12px);border-bottom:1px solid var(--border);padding:0 2rem;height:56px;display:flex;align-items:center;justify-content:space-between;}
+  .nav-logo{font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:2px;display:flex;align-items:center;gap:10px;}
+  .nav-logo .dot{width:8px;height:8px;border-radius:50%;background:var(--verde);box-shadow:0 0 8px var(--verde);animation:pulse 2s ease-in-out infinite;}
+  @keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.6;transform:scale(.8)}}
+  .nav-tabs{display:flex;gap:4px;}
+  .nav-tab{padding:6px 14px;border-radius:6px;font-size:13px;font-weight:500;color:var(--muted);cursor:pointer;transition:all .2s;border:none;background:none;font-family:'DM Sans',sans-serif;text-decoration:none;display:flex;align-items:center;}
+  .nav-tab:hover{color:var(--texto);background:var(--card);}
+  .nav-tab.active{color:var(--verde);background:rgba(0,200,83,0.1);}
+  .nav-right{display:flex;align-items:center;gap:10px;}
+  .avatar{width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,var(--verde),var(--oro));display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:500;color:#000;cursor:pointer;}
+  .logout-btn{font-size:12px;color:var(--muted);background:none;border:1px solid var(--border);border-radius:6px;padding:5px 10px;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all .15s;}
+  .logout-btn:hover{color:var(--texto);border-color:var(--muted);}
+  .main{position:relative;z-index:1;max-width:1280px;margin:0 auto;padding:2rem 2rem 4rem;display:grid;grid-template-columns:1fr 340px;gap:2rem;}
+  .hero{grid-column:1/-1;display:flex;align-items:flex-end;justify-content:space-between;padding:2rem 0 1.5rem;border-bottom:1px solid var(--border);}
+  .hero-title{font-family:'Bebas Neue',sans-serif;font-size:clamp(48px,7vw,88px);line-height:.9;letter-spacing:2px;}
+  .hero-title .year{color:var(--verde);display:block;}
+  .fase-badge{display:inline-block;background:rgba(0,200,83,0.15);border:1px solid rgba(0,200,83,0.3);color:var(--verde);font-size:11px;font-weight:500;letter-spacing:1.5px;text-transform:uppercase;padding:5px 12px;border-radius:20px;margin-bottom:8px;}
+  .my-position{grid-column:1/-1;background:var(--bg3);border:1px solid var(--border);border-radius:16px;padding:1.5rem 2rem;display:flex;align-items:center;gap:2rem;position:relative;overflow:hidden;}
+  .my-position::before{content:'';position:absolute;left:0;top:0;bottom:0;width:4px;background:linear-gradient(180deg,var(--verde),var(--oro));border-radius:4px 0 0 4px;}
+  .position-num{font-family:'Bebas Neue',sans-serif;font-size:64px;line-height:1;color:var(--verde);min-width:80px;}
+  .position-num span{font-size:22px;color:var(--muted);font-family:'DM Sans',sans-serif;}
+  .position-stats{display:flex;gap:2rem;margin-left:auto;}
+  .pos-stat .val{font-family:'Bebas Neue',sans-serif;font-size:32px;line-height:1;}
+  .pos-stat .val.gold{color:var(--oro);}
+  .pos-stat .lbl{font-size:11px;color:var(--muted);margin-top:2px;text-transform:uppercase;letter-spacing:.5px;}
+  .col-left{display:flex;flex-direction:column;gap:1.5rem;}
+  .col-right{display:flex;flex-direction:column;gap:1.5rem;}
+  .section-title{font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:1.5px;color:var(--muted);margin-bottom:1rem;display:flex;align-items:center;gap:10px;}
+  .section-title::after{content:'';flex:1;height:1px;background:var(--border);}
+  .match-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:1rem 1.25rem;display:flex;align-items:center;gap:1rem;transition:border-color .2s;margin-bottom:10px;}
+  .match-card.clickable{cursor:pointer;}
+  .match-card.clickable:hover{border-color:rgba(0,200,83,0.3);background:rgba(0,200,83,0.03);}
+  .team-side{display:flex;align-items:center;gap:10px;flex:1;}
+  .team-side.right{flex-direction:row-reverse;}
+  .flag{font-size:28px;}
+  .team-name{font-size:14px;font-weight:500;}
+  .match-center{text-align:center;min-width:90px;}
+  .match-score{font-family:'Bebas Neue',sans-serif;font-size:26px;letter-spacing:3px;line-height:1;}
+  .match-time{font-size:11px;color:var(--muted);margin-top:2px;}
+  .pred-badge{font-size:11px;padding:3px 8px;border-radius:4px;white-space:nowrap;}
+  .pred-badge.exact{background:rgba(0,200,83,0.15);color:var(--verde);}
+  .pred-badge.win{background:rgba(255,214,0,0.12);color:var(--oro);}
+  .pred-badge.miss{background:rgba(255,68,68,0.12);color:#ff6b6b;}
+  .pred-badge.none{background:var(--card);color:var(--muted);border:1px solid var(--border);}
+  .ranking-card{background:var(--card);border:1px solid var(--border);border-radius:16px;overflow:hidden;}
+  .ranking-header{padding:1rem 1.25rem;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;}
+  .ranking-header h3{font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:1px;}
+  .ranking-row{display:flex;align-items:center;gap:10px;padding:10px 1.25rem;border-bottom:1px solid var(--border);transition:background .15s;}
+  .ranking-row:last-child{border-bottom:none;}
+  .ranking-row:hover{background:rgba(255,255,255,0.02);}
+  .ranking-row.me{background:rgba(0,200,83,0.05);border-left:2px solid var(--verde);}
+  .rank-pos{font-family:'Bebas Neue',sans-serif;font-size:18px;min-width:24px;color:var(--muted);}
+  .rank-pos.top{color:var(--oro);}
+  .rank-avatar{width:30px;height:30px;border-radius:50%;background:var(--bg3);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:500;flex-shrink:0;border:1px solid var(--border);}
+  .rank-name{flex:1;font-size:13px;font-weight:500;}
+  .rank-pts{font-family:'Bebas Neue',sans-serif;font-size:20px;}
+  .skeleton{background:linear-gradient(90deg,var(--bg3) 25%,var(--bg2) 50%,var(--bg3) 75%);background-size:200% 100%;animation:shimmer 1.2s infinite;border-radius:6px;height:16px;}
+  @keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
+  .group-card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:1.25rem;}
+  .group-code{display:flex;align-items:center;justify-content:space-between;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:8px 12px;margin:10px 0;}
+  .group-code span{font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:3px;color:var(--oro);}
+  .copy-btn{font-size:11px;color:var(--muted);cursor:pointer;border:1px solid var(--border);background:none;padding:3px 8px;border-radius:4px;transition:all .15s;font-family:'DM Sans',sans-serif;}
+  .copy-btn:hover{color:var(--texto);}
+  .btn-primary{width:100%;background:var(--verde);color:#000;font-family:'Bebas Neue',sans-serif;font-size:16px;letter-spacing:1.5px;border:none;border-radius:8px;padding:12px;cursor:pointer;transition:all .2s;margin-top:4px;text-decoration:none;display:block;text-align:center;}
+  .btn-primary:hover{background:var(--verde-dark);}
+  .btn-secondary{width:100%;background:none;color:var(--muted);font-size:13px;border:1px solid var(--border);border-radius:8px;padding:10px;cursor:pointer;transition:all .2s;margin-top:8px;font-family:'DM Sans',sans-serif;}
+  .btn-secondary:hover{border-color:var(--muted);color:var(--texto);}
+  .join-form{display:flex;gap:8px;margin-top:10px;}
+  .join-input{flex:1;background:var(--bg3);border:1px solid var(--border);border-radius:8px;color:var(--texto);font-family:'DM Sans',sans-serif;font-size:13px;padding:9px 12px;outline:none;text-transform:uppercase;}
+  .join-input:focus{border-color:var(--verde);}
+  .join-input::placeholder{text-transform:none;color:var(--muted);}
+  .join-btn{background:var(--verde);color:#000;font-family:'Bebas Neue',sans-serif;font-size:14px;letter-spacing:1px;border:none;border-radius:8px;padding:9px 16px;cursor:pointer;}
+  @media(max-width:900px){.main{grid-template-columns:1fr;}}
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-logo"><div class="dot"></div>PRODE MUNDIAL</div>
+  <div class="nav-tabs">
+    <a href="hub.html" class="nav-tab active">Inicio</a>
+    <a href="predicciones.html" class="nav-tab">Predicciones</a>
+    <a href="equipo.html" class="nav-tab">Mi equipo</a>
+    <a href="especiales.html" class="nav-tab">Especiales</a>
+  </div>
+  <div class="nav-right">
+    <span id="navNombre" style="font-size:13px;color:var(--muted)"></span>
+    <div class="avatar" id="navAvatar">?</div>
+    <button class="logout-btn" onclick="logout()">Salir</button>
+  </div>
+</nav>
+
+<div class="main">
+
+  <div class="hero">
+    <div class="hero-title">MUNDIAL<br><span class="year">2026</span></div>
+    <div style="text-align:right">
+      <div class="fase-badge" id="faseBadge">Fase de grupos</div>
+      <p style="font-size:13px;color:var(--muted)">48 equipos · 104 partidos</p>
+    </div>
+  </div>
+
+  <!-- MI POSICIÓN -->
+  <div class="my-position">
+    <div class="position-num" id="miPos">–<span>°</span></div>
+    <div>
+      <h3 style="font-size:16px;font-weight:500;margin-bottom:4px" id="miNombre">Cargando...</h3>
+      <p style="font-size:13px;color:var(--muted)">Tu posición global</p>
+    </div>
+    <div class="position-stats">
+      <div class="pos-stat"><div class="val" id="miTotal">–</div><div class="lbl">Pts totales</div></div>
+      <div class="pos-stat"><div class="val" id="miExactos">–</div><div class="lbl">Exactos</div></div>
+      <div class="pos-stat"><div class="val" id="miPrediccion">–</div><div class="lbl">Pts pred.</div></div>
+      <div class="pos-stat"><div class="val" id="miFantasy">–</div><div class="lbl">Pts fantasy</div></div>
+    </div>
+  </div>
+
+  <!-- COLUMNA IZQUIERDA -->
+  <div class="col-left">
+
+    <div>
+      <div class="section-title">Próximos partidos</div>
+      <div id="proximosPartidos"><div class="skeleton" style="height:70px;margin-bottom:10px"></div><div class="skeleton" style="height:70px;margin-bottom:10px"></div></div>
+    </div>
+
+    <div>
+      <div class="section-title">Resultados recientes</div>
+      <div id="resultadosRecientes"><div class="skeleton" style="height:70px;margin-bottom:10px"></div><div class="skeleton" style="height:70px"></div></div>
+    </div>
+
+  </div>
+
+  <!-- COLUMNA DERECHA -->
+  <div class="col-right">
+
+    <!-- RANKING -->
+    <div class="ranking-card">
+      <div class="ranking-header">
+        <h3>Ranking global</h3>
+      </div>
+      <div id="rankingList"><div style="padding:1rem"><div class="skeleton" style="margin-bottom:8px"></div><div class="skeleton" style="margin-bottom:8px"></div><div class="skeleton"></div></div></div>
+    </div>
+
+    <!-- GRUPO PRIVADO -->
+    <div class="group-card">
+      <div class="section-title" style="margin-bottom:.75rem">Mi grupo privado</div>
+      <div id="grupoInfo">
+        <p style="font-size:13px;color:var(--muted);margin-bottom:8px">No estás en ningún grupo todavía</p>
+      </div>
+      <div class="join-form">
+        <input type="text" class="join-input" id="joinCodigo" placeholder="Ingresá un código" maxlength="10">
+        <button class="join-btn" onclick="unirseGrupo()">Unirse</button>
+      </div>
+      <button class="btn-secondary" onclick="crearGrupo()">+ Crear nuevo grupo</button>
+    </div>
+
+  </div>
+
+</div>
+
+<script>
+  const SUPABASE_URL = "https://ipmyezwxpxnyukyurhqd.supabase.co"
+  const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlwbXllend4cHhueXVreXVyaHFkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc0NjA2OTksImV4cCI6MjA5MzAzNjY5OX0.yRG5H0rsGC6lHcIt1kqPzzzyIUQ8s0ttD73g3Q8rJcI"
+  const { createClient } = supabase
+  const db = createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+
+  let currentUser = null
+  let misPredMap = {}
+
+  async function init() {
+    const { data } = await db.auth.getSession()
+    if (!data.session) { window.location.href = 'login.html'; return }
+    currentUser = data.session.user
+
+    const nombre = currentUser.user_metadata?.nombre || currentUser.email.split('@')[0]
+    document.getElementById('navNombre').textContent = nombre
+    document.getElementById('navAvatar').textContent = nombre[0].toUpperCase()
+    document.getElementById('miNombre').textContent = nombre
+
+    await Promise.all([
+      cargarRanking(),
+      cargarPartidos(),
+      cargarMiGrupo(),
+    ])
+  }
+
+  async function cargarRanking() {
+    const { data } = await db
+      .from('ranking_global')
+      .select('usuario_id,nombre,pts_total,pts_predicciones,pts_fantasy,resultados_exactos')
+      .order('pts_total', { ascending: false })
+      .limit(20)
+
+    if (!data) return
+
+    // Mi posición
+    const miIdx = data.findIndex(r => r.usuario_id === currentUser.id)
+    if (miIdx >= 0) {
+      const yo = data[miIdx]
+      document.getElementById('miPos').innerHTML = `${miIdx+1}<span>°</span>`
+      document.getElementById('miTotal').textContent = yo.pts_total || 0
+      document.getElementById('miExactos').textContent = yo.resultados_exactos || 0
+      document.getElementById('miPrediccion').textContent = yo.pts_predicciones || 0
+      document.getElementById('miFantasy').textContent = parseFloat(yo.pts_fantasy || 0).toFixed(1)
+    } else {
+      document.getElementById('miPos').innerHTML = `–<span>°</span>`
+      document.getElementById('miTotal').textContent = 0
+      document.getElementById('miExactos').textContent = 0
+      document.getElementById('miPrediccion').textContent = 0
+      document.getElementById('miFantasy').textContent = '0.0'
+    }
+
+    // Lista ranking
+    const html = data.slice(0, 10).map((r, i) => {
+      const isMe = r.usuario_id === currentUser.id
+      const initials = (r.nombre || 'U').slice(0,2).toUpperCase()
+      const topClass = i < 3 ? 'top' : ''
+      return `
+        <div class="ranking-row ${isMe ? 'me' : ''}">
+          <div class="rank-pos ${topClass}">${i+1}</div>
+          <div class="rank-avatar">${initials}</div>
+          <div class="rank-name" ${isMe ? 'style="color:var(--verde)"' : ''}>${isMe ? 'Vos · ' : ''}${r.nombre || 'Usuario'}</div>
+          <div class="rank-pts" ${i===0?'style="color:var(--oro)"':''}>${r.pts_total || 0}</div>
+        </div>`
+    }).join('')
+    document.getElementById('rankingList').innerHTML = html || '<div style="padding:1rem;text-align:center;color:var(--muted);font-size:13px">Aún no hay puntos</div>'
+  }
+
+  async function cargarPartidos() {
+    // Mis predicciones
+    const { data: preds } = await db
+      .from('predicciones_partidos')
+      .select('partido_id,goles_local_pred,goles_visitante_pred,puntos_obtenidos')
+      .eq('usuario_id', currentUser.id)
+    misPredMap = Object.fromEntries((preds||[]).map(p => [p.partido_id, p]))
+
+    const { data: partidos } = await db
+      .from('partidos')
+      .select('id,fase,ronda,fecha_hora,cerrado,jugado,goles_local,goles_visitante,pais_local:pais_local_id(nombre,url_bandera),pais_visitante:pais_visitante_id(nombre,url_bandera)')
+      .eq('fase','grupos')
+      .order('fecha_hora')
+      .limit(10)
+
+    if (!partidos) return
+
+    const proximos = partidos.filter(p => !p.jugado).slice(0,3)
+    const recientes = partidos.filter(p => p.jugado).slice(-3).reverse()
+
+    document.getElementById('proximosPartidos').innerHTML = proximos.length
+      ? proximos.map(p => renderMatchCard(p, false)).join('')
+      : '<p style="color:var(--muted);font-size:13px">No hay partidos próximos</p>'
+
+    document.getElementById('resultadosRecientes').innerHTML = recientes.length
+      ? recientes.map(p => renderMatchCard(p, true)).join('')
+      : '<p style="color:var(--muted);font-size:13px">Aún no hay resultados</p>'
+  }
+
+  function renderMatchCard(p, jugado) {
+    const fl = p.pais_local?.url_bandera || ''
+    const fv = p.pais_visitante?.url_bandera || ''
+    const nl = p.pais_local?.nombre || 'Local'
+    const nv = p.pais_visitante?.nombre || 'Visitante'
+    const flagL = fl ? `<img src="${fl}" style="width:32px;height:22px;border-radius:3px;object-fit:cover">` : '🏳'
+    const flagV = fv ? `<img src="${fv}" style="width:32px;height:22px;border-radius:3px;object-fit:cover">` : '🏳'
+
+    let centerHtml, badgeHtml = ''
+    if (jugado) {
+      centerHtml = `<div class="match-score">${p.goles_local} – ${p.goles_visitante}</div><div class="match-time">Finalizado</div>`
+      const pred = misPredMap[p.id]
+      if (pred) {
+        const pts = pred.puntos_obtenidos
+        if (pts === 5) badgeHtml = `<span class="pred-badge exact">${pred.goles_local_pred}-${pred.goles_visitante_pred} ✓ +5</span>`
+        else if (pts === 3) badgeHtml = `<span class="pred-badge win">${pred.goles_local_pred}-${pred.goles_visitante_pred} · +3</span>`
+        else if (pts === 0) badgeHtml = `<span class="pred-badge miss">${pred.goles_local_pred}-${pred.goles_visitante_pred} · +0</span>`
+      }
+    } else {
+      const fecha = p.fecha_hora ? new Date(p.fecha_hora).toLocaleDateString('es-AR',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}) : 'Próximamente'
+      centerHtml = `<div class="match-score">· VS ·</div><div class="match-time">${fecha}</div>`
+      const pred = misPredMap[p.id]
+      badgeHtml = pred
+        ? `<span class="pred-badge win">${pred.goles_local_pred}-${pred.goles_visitante_pred}</span>`
+        : `<span class="pred-badge none">Sin pred.</span>`
+    }
+
+    return `
+      <div class="match-card ${!jugado && !p.cerrado ? 'clickable' : ''}" onclick="${!jugado && !p.cerrado ? "window.location.href='predicciones.html'" : ''}">
+        <div class="team-side">${flagL}<div class="team-name">${nl}</div></div>
+        <div class="match-center">${centerHtml}</div>
+        <div class="team-side right">${flagV}<div class="team-name">${nv}</div></div>
+        ${badgeHtml}
+      </div>`
+  }
+
+  async function cargarMiGrupo() {
+    const { data } = await db
+      .from('miembros_grupo')
+      .select('grupo:grupo_id(id,nombre,codigo_invitacion)')
+      .eq('usuario_id', currentUser.id)
+      .limit(1)
+      .single()
+
+    if (!data?.grupo) return
+
+    const g = data.grupo
+    document.getElementById('grupoInfo').innerHTML = `
+      <p style="font-size:13px;color:var(--muted);margin-bottom:8px">${g.nombre}</p>
+      <div class="group-code">
+        <span>${g.codigo_invitacion}</span>
+        <button class="copy-btn" onclick="navigator.clipboard.writeText('${g.codigo_invitacion}');this.textContent='¡Copiado!'">Copiar</button>
+      </div>
+      <a href="ranking_grupo.html?grupo=${g.id}" class="btn-primary" style="margin-top:8px">Ver ranking del grupo</a>`
+  }
+
+  async function unirseGrupo() {
+    const codigo = document.getElementById('joinCodigo').value.trim().toUpperCase()
+    if (!codigo) return
+    const { data: grupo } = await db
+      .from('grupos_privados')
+      .select('id,nombre')
+      .eq('codigo_invitacion', codigo)
+      .single()
+    if (!grupo) { alert('Código inválido'); return }
+    const { error } = await db.from('miembros_grupo').insert({ grupo_id: grupo.id, usuario_id: currentUser.id })
+    if (error?.code === '23505') { alert('Ya sos miembro de este grupo'); return }
+    if (error) { alert('Error al unirse'); return }
+    alert(`Te uniste a "${grupo.nombre}"`)
+    cargarMiGrupo()
+  }
+
+  async function crearGrupo() {
+    const nombre = prompt('Nombre del grupo:')
+    if (!nombre) return
+    const codigo = Math.random().toString(36).substr(2,8).toUpperCase()
+    const { data, error } = await db.from('grupos_privados')
+      .insert({ nombre, codigo_invitacion: codigo, creador_id: currentUser.id })
+      .select().single()
+    if (error) { alert('Error al crear grupo'); return }
+    await db.from('miembros_grupo').insert({ grupo_id: data.id, usuario_id: currentUser.id })
+    cargarMiGrupo()
+  }
+
+  async function logout() {
+    await db.auth.signOut()
+    window.location.href = 'login.html'
+  }
+
+  init()
+</script>
+</body>
+</html>

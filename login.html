@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ingresar · Prode Mundial 2026</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root {
+    --verde:#00C853;--oro:#FFD600;--bg:#0a0e17;--bg2:#111827;--bg3:#1a2235;
+    --texto:#e8edf5;--muted:#6b7a99;--border:rgba(255,255,255,0.07);--card:rgba(255,255,255,0.04);
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--texto);min-height:100vh;display:flex;align-items:center;justify-content:center;}
+  body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellipse 80% 50% at 30% 20%,rgba(0,200,83,0.07) 0%,transparent 60%),radial-gradient(ellipse 60% 40% at 80% 80%,rgba(255,214,0,0.05) 0%,transparent 55%);pointer-events:none;}
+  .box{position:relative;z-index:1;width:420px;max-width:95vw;}
+  .logo{text-align:center;margin-bottom:2rem;}
+  .logo-text{font-family:'Bebas Neue',sans-serif;font-size:36px;letter-spacing:3px;}
+  .logo-sub{font-size:12px;color:var(--muted);letter-spacing:2px;text-transform:uppercase;margin-top:4px;}
+  .card{background:var(--bg2);border:1px solid var(--border);border-radius:20px;padding:2rem;margin-bottom:1rem;}
+  .tabs{display:flex;gap:4px;margin-bottom:1.5rem;background:var(--bg3);border-radius:10px;padding:4px;}
+  .tab{flex:1;padding:8px;border-radius:7px;font-size:13px;font-weight:500;cursor:pointer;border:none;background:none;color:var(--muted);transition:all .15s;font-family:'DM Sans',sans-serif;}
+  .tab.active{background:var(--bg2);color:var(--texto);}
+  .form-group{margin-bottom:1rem;}
+  .form-label{font-size:12px;color:var(--muted);margin-bottom:5px;display:block;text-transform:uppercase;letter-spacing:.5px;}
+  .form-input{width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:8px;color:var(--texto);font-family:'DM Sans',sans-serif;font-size:14px;padding:11px 14px;outline:none;transition:border-color .2s;}
+  .form-input:focus{border-color:var(--verde);}
+  .form-input::placeholder{color:var(--muted);}
+  .btn-submit{width:100%;background:var(--verde);color:#000;font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:2px;border:none;border-radius:10px;padding:13px;cursor:pointer;transition:all .2s;margin-top:4px;}
+  .btn-submit:hover{background:#009624;transform:translateY(-1px);}
+  .btn-submit:disabled{background:var(--muted);cursor:default;transform:none;}
+  .error-msg{background:rgba(255,68,68,0.1);border:1px solid rgba(255,68,68,0.3);border-radius:8px;padding:10px 14px;font-size:13px;color:#ff6b6b;margin-bottom:1rem;display:none;}
+  .success-msg{background:rgba(0,200,83,0.1);border:1px solid rgba(0,200,83,0.3);border-radius:8px;padding:10px 14px;font-size:13px;color:var(--verde);margin-bottom:1rem;display:none;}
+  .divider{text-align:center;font-size:12px;color:var(--muted);margin:1rem 0;}
+  .spinner{display:inline-block;width:16px;height:16px;border:2px solid rgba(0,0,0,0.3);border-top-color:#000;border-radius:50%;animation:spin .6s linear infinite;vertical-align:middle;margin-right:6px;}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  @keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+  .box{animation:fadeUp .4s ease both;}
+</style>
+</head>
+<body>
+<div class="box">
+  <div class="logo">
+    <div class="logo-text">⚽ PRODE MUNDIAL</div>
+    <div class="logo-sub">2026 · USA · CAN · MEX</div>
+  </div>
+
+  <div class="card">
+    <div class="tabs">
+      <button class="tab active" onclick="setTab('login',this)">Ingresar</button>
+      <button class="tab" onclick="setTab('register',this)">Registrarse</button>
+    </div>
+
+    <div id="errorMsg" class="error-msg"></div>
+    <div id="successMsg" class="success-msg"></div>
+
+    <!-- LOGIN -->
+    <div id="formLogin">
+      <div class="form-group">
+        <label class="form-label">Email</label>
+        <input type="email" class="form-input" id="loginEmail" placeholder="tu@email.com" autocomplete="email">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Contraseña</label>
+        <input type="password" class="form-input" id="loginPass" placeholder="••••••••" autocomplete="current-password">
+      </div>
+      <button class="btn-submit" id="btnLogin" onclick="login()">INGRESAR</button>
+    </div>
+
+    <!-- REGISTRO -->
+    <div id="formRegister" style="display:none">
+      <div class="form-group">
+        <label class="form-label">Nombre</label>
+        <input type="text" class="form-input" id="regNombre" placeholder="Tu nombre completo">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Email</label>
+        <input type="email" class="form-input" id="regEmail" placeholder="tu@email.com" autocomplete="email">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Contraseña</label>
+        <input type="password" class="form-input" id="regPass" placeholder="Mínimo 6 caracteres" autocomplete="new-password">
+      </div>
+      <button class="btn-submit" id="btnRegister" onclick="register()">CREAR CUENTA</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  const SUPABASE_URL = "https://ipmyezwxpxnyukyurhqd.supabase.co"
+  const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlwbXllend4cHhueXVreXVyaHFkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc0NjA2OTksImV4cCI6MjA5MzAzNjY5OX0.yRG5H0rsGC6lHcIt1kqPzzzyIUQ8s0ttD73g3Q8rJcI"
+  const { createClient } = supabase
+  const db = createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+
+  // Si ya hay sesión activa, redirigir al hub
+  db.auth.getSession().then(({ data }) => {
+    if (data.session) window.location.href = 'hub.html'
+  })
+
+  function setTab(tab, btn) {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'))
+    btn.classList.add('active')
+    document.getElementById('formLogin').style.display    = tab === 'login'    ? '' : 'none'
+    document.getElementById('formRegister').style.display = tab === 'register' ? '' : 'none'
+    hideMessages()
+  }
+
+  function showError(msg) {
+    const el = document.getElementById('errorMsg')
+    el.textContent = msg; el.style.display = 'block'
+    document.getElementById('successMsg').style.display = 'none'
+  }
+  function showSuccess(msg) {
+    const el = document.getElementById('successMsg')
+    el.textContent = msg; el.style.display = 'block'
+    document.getElementById('errorMsg').style.display = 'none'
+  }
+  function hideMessages() {
+    document.getElementById('errorMsg').style.display = 'none'
+    document.getElementById('successMsg').style.display = 'none'
+  }
+
+  function setLoading(btnId, loading) {
+    const btn = document.getElementById(btnId)
+    btn.disabled = loading
+    btn.innerHTML = loading ? '<span class="spinner"></span>Cargando...' : btn.dataset.label
+  }
+
+  async function login() {
+    const email = document.getElementById('loginEmail').value.trim()
+    const pass  = document.getElementById('loginPass').value
+    if (!email || !pass) { showError('Completá email y contraseña'); return }
+    document.getElementById('btnLogin').dataset.label = 'INGRESAR'
+    setLoading('btnLogin', true)
+    hideMessages()
+
+    const { data, error } = await db.auth.signInWithPassword({ email, password: pass })
+    setLoading('btnLogin', false)
+
+    if (error) {
+      showError('Email o contraseña incorrectos')
+      return
+    }
+    window.location.href = 'hub.html'
+  }
+
+  async function register() {
+    const nombre = document.getElementById('regNombre').value.trim()
+    const email  = document.getElementById('regEmail').value.trim()
+    const pass   = document.getElementById('regPass').value
+    if (!nombre || !email || !pass) { showError('Completá todos los campos'); return }
+    if (pass.length < 6) { showError('La contraseña debe tener al menos 6 caracteres'); return }
+    document.getElementById('btnRegister').dataset.label = 'CREAR CUENTA'
+    setLoading('btnRegister', true)
+    hideMessages()
+
+    const { data, error } = await db.auth.signUp({
+      email, password: pass,
+      options: { data: { nombre } }
+    })
+    setLoading('btnRegister', false)
+
+    if (error) { showError(error.message); return }
+
+    if (data.user && !data.session) {
+      showSuccess('¡Cuenta creada! Revisá tu email para confirmar tu cuenta.')
+    } else {
+      window.location.href = 'hub.html'
+    }
+  }
+
+  // Enter para enviar
+  document.addEventListener('keydown', e => {
+    if (e.key !== 'Enter') return
+    if (document.getElementById('formLogin').style.display !== 'none') login()
+    else register()
+  })
+</script>
+</body>
+</html>
