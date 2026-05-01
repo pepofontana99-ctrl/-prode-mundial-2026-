@@ -1,0 +1,799 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin · Prode Mundial 2026</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root{--verde:#00C853;--oro:#FFD600;--rojo:#FF4444;--azul:#378ADD;--bg:#0a0e17;--bg2:#111827;--bg3:#1a2235;--texto:#e8edf5;--muted:#6b7a99;--border:rgba(255,255,255,0.07);--card:rgba(255,255,255,0.04);}
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--texto);min-height:100vh;display:flex;}
+  .sidebar{width:220px;background:var(--bg2);border-right:1px solid var(--border);display:flex;flex-direction:column;position:sticky;top:0;height:100vh;flex-shrink:0;}
+  .sidebar-logo{padding:1.25rem;border-bottom:1px solid var(--border);}
+  .logo-main{font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:2px;}
+  .logo-sub{font-size:10px;color:var(--rojo);letter-spacing:2px;text-transform:uppercase;font-weight:500;margin-top:2px;}
+  .sidebar-nav{padding:1rem 0;flex:1;}
+  .nav-label{font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);padding:6px 1.25rem;margin-top:6px;}
+  .nav-item{display:flex;align-items:center;gap:10px;padding:9px 1.25rem;font-size:13px;font-weight:500;color:var(--muted);cursor:pointer;transition:all .15s;border-left:2px solid transparent;}
+  .nav-item:hover{color:var(--texto);background:var(--card);}
+  .nav-item.active{color:var(--texto);background:rgba(255,255,255,.04);border-left-color:var(--verde);}
+  .nav-badge{margin-left:auto;background:var(--rojo);color:#fff;font-size:10px;font-weight:500;padding:2px 6px;border-radius:10px;}
+  .sidebar-footer{padding:1rem 1.25rem;border-top:1px solid var(--border);}
+  .admin-chip{display:flex;align-items:center;gap:8px;}
+  .admin-avatar{width:28px;height:28px;border-radius:50%;background:var(--rojo);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:500;color:#fff;}
+  .main{flex:1;display:flex;flex-direction:column;overflow:hidden;}
+  .topbar{height:52px;background:var(--bg2);border-bottom:1px solid var(--border);padding:0 2rem;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
+  .topbar-title{font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:1.5px;}
+  .content{flex:1;padding:1.5rem 2rem 3rem;overflow-y:auto;}
+  .btn{border-radius:7px;padding:7px 16px;font-size:13px;font-weight:500;cursor:pointer;transition:all .15s;border:none;font-family:'DM Sans',sans-serif;}
+  .btn-primary{background:var(--verde);color:#000;}.btn-primary:hover{background:#009624;}
+  .btn-danger{background:var(--rojo);color:#fff;}
+  .btn-outline{background:none;color:var(--muted);border:1px solid var(--border);}.btn-outline:hover{color:var(--texto);}
+  .btn-sm{padding:5px 12px;font-size:12px;}
+  .btn-blue{background:var(--azul);color:#fff;}
+  .btn:disabled{opacity:.5;cursor:default;}
+  .stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:1.5rem;}
+  .stat-card{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:14px 16px;}
+  .stat-val{font-family:'Bebas Neue',sans-serif;font-size:32px;line-height:1;}
+  .stat-lbl{font-size:11px;color:var(--muted);margin-top:4px;text-transform:uppercase;letter-spacing:.5px;}
+  .section-title{font-family:'Bebas Neue',sans-serif;font-size:16px;letter-spacing:1.5px;color:var(--muted);margin-bottom:1rem;display:flex;align-items:center;gap:10px;}
+  .section-title::after{content:'';flex:1;height:1px;background:var(--border);}
+  .table-wrap{background:var(--bg2);border:1px solid var(--border);border-radius:14px;overflow:hidden;margin-bottom:1.5rem;}
+  .table-header{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid var(--border);}
+  .table-header h3{font-size:14px;font-weight:500;}
+  table{width:100%;border-collapse:collapse;font-size:13px;}
+  th{padding:10px 16px;text-align:left;font-size:11px;font-weight:500;color:var(--muted);background:rgba(255,255,255,.02);border-bottom:1px solid var(--border);text-transform:uppercase;letter-spacing:.5px;}
+  td{padding:10px 16px;border-bottom:1px solid var(--border);vertical-align:middle;}
+  tr:last-child td{border-bottom:none;}
+  tr:hover td{background:rgba(255,255,255,.02);}
+  .flag-img{width:24px;height:16px;border-radius:2px;object-fit:cover;vertical-align:middle;margin-right:6px;}
+  .pill{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:500;padding:3px 9px;border-radius:20px;}
+  .pill-open{background:rgba(0,200,83,.12);color:var(--verde);}
+  .pill-locked{background:rgba(255,214,0,.12);color:var(--oro);}
+  .pill-played{background:rgba(55,138,221,.12);color:var(--azul);}
+  .pill-pending{background:var(--card);color:var(--muted);border:1px solid var(--border);}
+  .pill-dot{width:5px;height:5px;border-radius:50%;background:currentColor;}
+  .inline-form{display:flex;gap:8px;align-items:center;}
+  .score-inp{width:44px;height:32px;background:var(--bg3);border:1px solid var(--border);border-radius:6px;color:var(--texto);font-family:'Bebas Neue',sans-serif;font-size:20px;text-align:center;outline:none;transition:border-color .2s;-moz-appearance:textfield;}
+  .score-inp::-webkit-outer-spin-button,.score-inp::-webkit-inner-spin-button{-webkit-appearance:none;}
+  .score-inp:focus{border-color:var(--verde);}
+  .score-sep{font-family:'Bebas Neue',sans-serif;color:var(--muted);font-size:18px;}
+  .rend-panel{background:var(--bg2);border:1px solid var(--border);border-radius:14px;overflow:hidden;margin-bottom:1.5rem;}
+  .rend-row{display:grid;grid-template-columns:30px 1fr 80px 55px 55px 55px 55px 70px;align-items:center;gap:8px;padding:9px 16px;border-bottom:1px solid var(--border);font-size:13px;}
+  .rend-row:last-child{border-bottom:none;}
+  .rend-row:hover{background:rgba(255,255,255,.02);}
+  .rend-header{background:rgba(255,255,255,.02);font-size:11px;color:var(--muted);font-weight:500;text-transform:uppercase;letter-spacing:.5px;}
+  .nota-inp{width:54px;height:28px;background:var(--bg3);border:1px solid var(--border);border-radius:5px;color:var(--texto);font-size:13px;text-align:center;outline:none;transition:border-color .2s;}
+  .nota-inp:focus{border-color:var(--verde);}
+  .num-inp{width:44px;height:28px;background:var(--bg3);border:1px solid var(--border);border-radius:5px;color:var(--texto);font-size:13px;text-align:center;outline:none;-moz-appearance:textfield;}
+  .num-inp::-webkit-outer-spin-button,.num-inp::-webkit-inner-spin-button{-webkit-appearance:none;}
+  .check-inp{width:16px;height:16px;accent-color:var(--verde);cursor:pointer;}
+  .modal-overlay{display:none;position:fixed;inset:0;z-index:500;background:rgba(0,0,0,.7);backdrop-filter:blur(6px);align-items:center;justify-content:center;}
+  .modal-overlay.show{display:flex;}
+  .modal-box{background:var(--bg2);border:1px solid var(--border);border-radius:16px;padding:1.5rem;width:480px;max-width:95vw;}
+  .modal-box h3{font-family:'Bebas Neue',sans-serif;font-size:20px;margin-bottom:1.25rem;}
+  .form-group{margin-bottom:1rem;}
+  .form-label{font-size:12px;color:var(--muted);margin-bottom:5px;display:block;text-transform:uppercase;letter-spacing:.5px;}
+  .form-input{width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:8px;color:var(--texto);font-family:'DM Sans',sans-serif;font-size:13px;padding:9px 12px;outline:none;transition:border-color .2s;}
+  .form-input:focus{border-color:var(--verde);}
+  .form-select{width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:8px;color:var(--texto);font-family:'DM Sans',sans-serif;font-size:13px;padding:9px 12px;outline:none;cursor:pointer;}
+  .form-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+  .modal-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:1.25rem;}
+  .ganadores-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:1.5rem;}
+  .ganador-card{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:1rem;}
+  .gc-label{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;display:flex;justify-content:space-between;}
+  .gc-pts{font-family:'Bebas Neue',sans-serif;font-size:14px;color:var(--oro);}
+  .ganador-card select{width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:7px;color:var(--texto);font-family:'DM Sans',sans-serif;font-size:13px;padding:8px 10px;outline:none;cursor:pointer;margin-top:4px;}
+  .empty-state{padding:2.5rem;text-align:center;color:var(--muted);font-size:13px;}
+  .toast{position:fixed;bottom:24px;right:24px;background:var(--bg3);border:1px solid rgba(0,200,83,.4);color:var(--verde);font-size:13px;font-weight:500;padding:10px 18px;border-radius:8px;opacity:0;transition:all .3s;pointer-events:none;z-index:600;transform:translateY(10px);}
+  .toast.show{opacity:1;transform:translateY(0);}
+  .toast.warn{border-color:rgba(255,214,0,.4);color:var(--oro);}
+  .toast.error{border-color:rgba(255,68,68,.4);color:var(--rojo);}
+  .skeleton{background:linear-gradient(90deg,var(--bg3) 25%,var(--bg2) 50%,var(--bg3) 75%);background-size:200% 100%;animation:shimmer 1.2s infinite;border-radius:6px;height:14px;}
+  @keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
+</style>
+</head>
+<body>
+
+<div class="sidebar">
+  <div class="sidebar-logo">
+    <div class="logo-main">Prode 2026</div>
+    <div class="logo-sub">Panel Admin</div>
+  </div>
+  <nav class="sidebar-nav">
+    <div class="nav-label">General</div>
+    <div class="nav-item active" onclick="showSection('dashboard',this)"><span>▦</span> Dashboard</div>
+    <div class="nav-item" onclick="showSection('partidos',this)"><span>⚽</span> Partidos</div>
+    <div class="nav-item" onclick="showSection('rendimiento',this)"><span>📊</span> Rendimiento <span class="nav-badge" id="pendBadge">0</span></div>
+    <div class="nav-label">Torneo</div>
+    <div class="nav-item" onclick="showSection('eliminatorias',this)"><span>🗓</span> Eliminatorias</div>
+    <div class="nav-item" onclick="showSection('ganadores',this)"><span>🏆</span> Ganadores</div>
+    <div class="nav-item" onclick="showSection('usuarios',this)"><span>👥</span> Usuarios</div>
+    <div class="nav-label">Config</div>
+    <div class="nav-item" onclick="showSection('config',this)"><span>⚙</span> Configuración</div>
+  </nav>
+  <div class="sidebar-footer">
+    <div class="admin-chip">
+      <div class="admin-avatar" id="adminAvatar">A</div>
+      <div>
+        <div style="font-size:12px;font-weight:500;color:var(--texto)" id="adminNombre">Admin</div>
+        <div style="font-size:10px;color:var(--muted)" id="adminEmail"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="main">
+  <div class="topbar">
+    <div class="topbar-title" id="topbarTitle">Dashboard</div>
+    <div style="display:flex;gap:8px;" id="topbarActions">
+      <button class="btn btn-outline btn-sm" onclick="logout()">Salir</button>
+    </div>
+  </div>
+
+  <div class="content" id="content">
+
+    <!-- DASHBOARD -->
+    <div id="sec-dashboard">
+      <div class="stats-row">
+        <div class="stat-card"><div class="stat-val" style="color:var(--verde)" id="statUsuarios">–</div><div class="stat-lbl">Usuarios registrados</div></div>
+        <div class="stat-card"><div class="stat-val" style="color:var(--azul)" id="statPartidos">–</div><div class="stat-lbl">Partidos cargados</div></div>
+        <div class="stat-card"><div class="stat-val" style="color:var(--oro)" id="statEquipos">–</div><div class="stat-lbl">Equipos armados</div></div>
+        <div class="stat-card"><div class="stat-val" style="color:var(--rojo)" id="statPendientes">–</div><div class="stat-lbl">Partidos sin rendimiento</div></div>
+      </div>
+      <div class="section-title">Ranking top 10</div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>#</th><th>Usuario</th><th>Pred.</th><th>Fantasy</th><th>Especiales</th><th>Total</th></tr></thead>
+          <tbody id="rankingTable"><tr><td colspan="6" class="empty-state">Cargando...</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- PARTIDOS -->
+    <div id="sec-partidos" style="display:none">
+      <div style="display:flex;gap:4px;margin-bottom:1.25rem;" id="faseTabs">
+        <button class="btn btn-primary btn-sm" onclick="setFase('grupos',this)">Fase de grupos</button>
+        <button class="btn btn-outline btn-sm" onclick="setFase('elim',this)">Eliminatorias</button>
+      </div>
+      <div id="tabla-grupos">
+        <div class="table-wrap">
+          <div class="table-header"><h3>Partidos · Fase de grupos</h3><button class="btn btn-primary btn-sm" onclick="openModalPartido()">+ Nuevo partido</button></div>
+          <table>
+            <thead><tr><th>Partido</th><th>Grupo / Fecha</th><th>Fecha y hora</th><th>Estado</th><th>Resultado</th><th>Acciones</th></tr></thead>
+            <tbody id="partidosTable"><tr><td colspan="6" class="empty-state">Cargando...</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+      <div id="tabla-elim" style="display:none">
+        <div class="table-wrap">
+          <div class="table-header"><h3>Eliminatorias</h3><button class="btn btn-primary btn-sm" onclick="openModalPartido('elim')">+ Cargar cruce</button></div>
+          <div class="empty-state">Los cruces se habilitan cuando el admin los carga al terminar la fase de grupos.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- RENDIMIENTO -->
+    <div id="sec-rendimiento" style="display:none">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
+        <div>
+          <div style="font-size:13px;font-weight:500;margin-bottom:3px">Seleccioná un partido jugado para cargar el rendimiento</div>
+          <div style="font-size:12px;color:var(--muted)">Los puntos se calculan automáticamente al guardar</div>
+        </div>
+        <select class="form-select" id="rendPartidoSelect" style="width:280px;font-size:12px;" onchange="cargarFormRendimiento()">
+          <option value="">-- Elegir partido --</option>
+        </select>
+      </div>
+      <div id="rendFormContainer"><div class="empty-state">Elegí un partido arriba para cargar el rendimiento de los jugadores.</div></div>
+      <div id="rendActions" style="display:none;justify-content:flex-end;gap:8px;margin-top:1rem;">
+        <button class="btn btn-outline" onclick="document.getElementById('rendPartidoSelect').value='';document.getElementById('rendFormContainer').innerHTML='<div class=empty-state>Elegí un partido arriba.</div>';document.getElementById('rendActions').style.display='none'">Cancelar</button>
+        <button class="btn btn-primary" id="btnGuardarRend" onclick="guardarRendimiento()">Guardar y calcular puntos</button>
+      </div>
+    </div>
+
+    <!-- ELIMINATORIAS -->
+    <div id="sec-eliminatorias" style="display:none">
+      <div class="table-wrap">
+        <div class="table-header"><h3>Cruces de eliminatorias</h3><button class="btn btn-primary btn-sm" onclick="openModalPartido('elim')">+ Cargar cruce</button></div>
+        <div class="empty-state">Al cargar un cruce se habilitan predicciones automáticamente para todos los usuarios.</div>
+      </div>
+    </div>
+
+    <!-- GANADORES -->
+    <div id="sec-ganadores" style="display:none">
+      <div style="background:rgba(255,214,0,.06);border:1px solid rgba(255,214,0,.2);border-radius:10px;padding:10px 16px;font-size:12px;color:var(--oro);margin-bottom:1.5rem;">
+        ⚡ Cargar al finalizar el torneo. Al confirmar se calculan los puntos especiales de todos los usuarios.
+      </div>
+      <div class="section-title">Podio</div>
+      <div class="ganadores-grid" id="ganPodio"></div>
+      <div class="section-title">Premios individuales</div>
+      <div class="ganadores-grid" id="ganPremios"></div>
+      <div style="display:flex;justify-content:flex-end;margin-top:1rem;">
+        <button class="btn btn-primary" onclick="guardarGanadores()">Confirmar ganadores y calcular puntos</button>
+      </div>
+    </div>
+
+    <!-- USUARIOS -->
+    <div id="sec-usuarios" style="display:none">
+      <div class="table-wrap">
+        <div class="table-header">
+          <h3>Usuarios registrados</h3>
+          <input type="text" placeholder="Buscar..." id="userSearch" oninput="filtrarUsuarios()" style="background:var(--bg3);border:1px solid var(--border);border-radius:7px;color:var(--texto);font-size:12px;padding:6px 12px;outline:none;width:180px;">
+        </div>
+        <table>
+          <thead><tr><th>Usuario</th><th>Email</th><th>Equipo</th><th>Predicciones</th><th>Pts</th><th>Admin</th></tr></thead>
+          <tbody id="usuariosTable"><tr><td colspan="6" class="empty-state">Cargando...</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- CONFIG -->
+    <div id="sec-config" style="display:none">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.25rem;">
+        <div class="table-wrap" style="margin-bottom:0">
+          <div class="table-header"><h3>Estado del torneo</h3></div>
+          <div style="padding:1.25rem;display:flex;flex-direction:column;gap:12px;">
+            <div class="form-group" style="margin:0">
+              <label class="form-label">Bloquear predicciones (inicio del torneo)</label>
+              <button class="btn btn-danger" style="width:100%;margin-top:6px" onclick="bloquearPredicciones()">🔒 Bloquear todas las predicciones</button>
+            </div>
+            <div class="form-group" style="margin:0;padding-top:12px;border-top:1px solid var(--border)">
+              <label class="form-label">Bloquear equipos fantasy</label>
+              <button class="btn btn-danger" style="width:100%;margin-top:6px" onclick="bloquearEquipos()">🔒 Bloquear todos los equipos</button>
+            </div>
+          </div>
+        </div>
+        <div class="table-wrap" style="margin-bottom:0">
+          <div class="table-header"><h3>Estadísticas rápidas</h3></div>
+          <div style="padding:1.25rem;">
+            <div style="font-size:13px;color:var(--muted);margin-bottom:8px">Usuarios sin equipo:</div>
+            <div style="font-family:'Bebas Neue',sans-serif;font-size:32px;color:var(--rojo)" id="sinEquipo">–</div>
+            <div style="font-size:13px;color:var(--muted);margin-top:12px;margin-bottom:8px">Usuarios sin predicciones:</div>
+            <div style="font-family:'Bebas Neue',sans-serif;font-size:32px;color:var(--oro)" id="sinPredicciones">–</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- MODAL PARTIDO -->
+<div class="modal-overlay" id="modalPartido" onclick="maybeClose(event,'modalPartido')">
+  <div class="modal-box">
+    <h3 id="modalPartidoTitle">Nuevo partido</h3>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Local</label>
+        <select class="form-select" id="mpLocal"></select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Visitante</label>
+        <select class="form-select" id="mpVisitante"></select>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Fase</label>
+        <select class="form-select" id="mpFase">
+          <option value="grupos">Grupos</option>
+          <option value="16vos">16vos</option>
+          <option value="cuartos">Cuartos</option>
+          <option value="semifinal">Semifinal</option>
+          <option value="tercer_puesto">3er puesto</option>
+          <option value="final">Final</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Ronda / Grupo</label>
+        <input type="text" class="form-input" id="mpRonda" placeholder="ej: Grupo A · Fecha 1">
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Fecha y hora</label>
+        <input type="datetime-local" class="form-input" id="mpFecha">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Estadio</label>
+        <input type="text" class="form-input" id="mpEstadio" placeholder="ej: MetLife Stadium">
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="closeModal('modalPartido')">Cancelar</button>
+      <button class="btn btn-primary" onclick="guardarPartido()">Guardar partido</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const SUPABASE_URL = "https://ipmyezwxpxnyukyurhqd.supabase.co"
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlwbXllend4cHhueXVreXVyaHFkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc0NjA2OTksImV4cCI6MjA5MzAzNjY5OX0.yRG5H0rsGC6lHcIt1kqPzzzyIUQ8s0ttD73g3Q8rJcI"
+const { createClient } = supabase
+const db = createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+
+let currentUser = null
+let allPaises = []
+let allJugadores = []
+let allPartidos = []
+let allUsuarios = []
+let rendimientoData = {} // partido_id -> jugadores con sus datos
+
+async function init() {
+  const { data } = await db.auth.getSession()
+  if (!data.session) { window.location.href = 'login.html'; return }
+  currentUser = data.session.user
+
+  // Verificar que sea admin
+  const { data: perfil } = await db.from('usuarios').select('es_admin,nombre').eq('id', currentUser.id).single()
+  if (!perfil?.es_admin) { alert('No tenés permisos de administrador'); window.location.href = 'hub.html'; return }
+
+  const nombre = perfil.nombre || currentUser.email.split('@')[0]
+  document.getElementById('adminNombre').textContent = nombre
+  document.getElementById('adminEmail').textContent = currentUser.email
+  document.getElementById('adminAvatar').textContent = nombre[0].toUpperCase()
+
+  await Promise.all([cargarPaises(), cargarJugadores(), cargarPartidosAdmin()])
+  cargarDashboard()
+}
+
+async function cargarPaises() {
+  const { data } = await db.from('paises').select('id,nombre,url_bandera,grupo').order('grupo').order('nombre')
+  allPaises = data || []
+}
+
+async function cargarJugadores() {
+  const { data } = await db.from('jugadores').select('id,nombre,posicion,pais:pais_id(nombre,url_bandera)').eq('activo',true).order('nombre')
+  allJugadores = data || []
+}
+
+async function cargarPartidosAdmin() {
+  const { data } = await db
+    .from('partidos')
+    .select('id,fase,ronda,fecha_hora,estadio,cerrado,jugado,goles_local,goles_visitante,pais_local:pais_local_id(id,nombre,url_bandera),pais_visitante:pais_visitante_id(id,nombre,url_bandera)')
+    .order('fecha_hora')
+  allPartidos = data || []
+}
+
+async function cargarDashboard() {
+  const [{ count: cUsers }, { count: cEquipos }, { data: ranking }] = await Promise.all([
+    db.from('usuarios').select('*', { count: 'exact', head: true }),
+    db.from('equipos_fantasy').select('*', { count: 'exact', head: true }),
+    db.from('ranking_global').select('usuario_id,nombre,pts_predicciones,pts_fantasy,pts_especiales,pts_total').limit(10)
+  ])
+
+  const jugados = allPartidos.filter(p => p.jugado)
+  const sinRend = jugados.filter(p => !p.cerrado || p.jugado).length
+
+  document.getElementById('statUsuarios').textContent = cUsers || 0
+  document.getElementById('statPartidos').textContent = allPartidos.length
+  document.getElementById('statEquipos').textContent = cEquipos || 0
+  document.getElementById('statPendientes').textContent = jugados.length
+  document.getElementById('pendBadge').textContent = jugados.length
+
+  // Ranking
+  const rows = (ranking || []).map((r, i) => `
+    <tr>
+      <td><b style="color:${i===0?'var(--oro)':i===1?'#b4b4c8':i===2?'#c8823c':'var(--muted)'}">${i+1}</b></td>
+      <td>${r.nombre || 'Usuario'}</td>
+      <td>${r.pts_predicciones || 0}</td>
+      <td>${parseFloat(r.pts_fantasy||0).toFixed(1)}</td>
+      <td>${r.pts_especiales || 0}</td>
+      <td><b style="color:${i===0?'var(--oro)':'var(--texto)'}">${parseFloat(r.pts_total||0).toFixed(1)}</b></td>
+    </tr>`).join('')
+  document.getElementById('rankingTable').innerHTML = rows || '<tr><td colspan="6" class="empty-state">Aún no hay puntos cargados</td></tr>'
+}
+
+function renderPartidosTable() {
+  const fase = document.getElementById('tabla-elim').style.display === 'none' ? 'grupos' : 'elim'
+  const partidos = allPartidos.filter(p => fase === 'grupos' ? p.fase === 'grupos' : p.fase !== 'grupos')
+
+  const rows = partidos.map(p => {
+    const fl = p.pais_local?.url_bandera ? `<img class="flag-img" src="${p.pais_local.url_bandera}">` : ''
+    const fv = p.pais_visitante?.url_bandera ? `<img class="flag-img" src="${p.pais_visitante.url_bandera}">` : ''
+    const fecha = p.fecha_hora ? new Date(p.fecha_hora).toLocaleDateString('es-AR',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}) : '–'
+
+    let estadoPill, resultado, acciones
+    if (p.jugado) {
+      estadoPill = `<span class="pill pill-played"><span class="pill-dot"></span>Jugado</span>`
+      resultado = `<b>${p.goles_local} – ${p.goles_visitante}</b>`
+      acciones = `<button class="btn btn-blue btn-sm" onclick="irARendimiento('${p.id}')">Cargar rendimiento</button>`
+    } else if (p.cerrado) {
+      estadoPill = `<span class="pill pill-locked"><span class="pill-dot"></span>Cerrado</span>`
+      resultado = '–'
+      acciones = `<div class="inline-form">
+        <input type="number" class="score-inp" min="0" max="20" placeholder="–" id="gl-${p.id}">
+        <span class="score-sep">–</span>
+        <input type="number" class="score-inp" min="0" max="20" placeholder="–" id="gv-${p.id}">
+        <button class="btn btn-primary btn-sm" onclick="cargarResultado('${p.id}')">Cargar</button>
+      </div>`
+    } else {
+      estadoPill = `<span class="pill pill-open"><span class="pill-dot"></span>Abierto</span>`
+      resultado = '–'
+      acciones = `<button class="btn btn-outline btn-sm" onclick="cerrarPartido('${p.id}')">Cerrar pred.</button>`
+    }
+
+    return `<tr>
+      <td>${fl}${p.pais_local?.nombre||'Local'} vs ${fv}${p.pais_visitante?.nombre||'Visitante'}</td>
+      <td style="color:var(--muted)">${p.ronda||'–'}</td>
+      <td style="color:var(--muted)">${fecha}</td>
+      <td>${estadoPill}</td>
+      <td>${resultado}</td>
+      <td>${acciones}</td>
+    </tr>`
+  }).join('')
+
+  document.getElementById('partidosTable').innerHTML = rows || '<tr><td colspan="6" class="empty-state">No hay partidos cargados</td></tr>'
+}
+
+async function cargarResultado(partidoId) {
+  const gl = parseInt(document.getElementById('gl-'+partidoId)?.value)
+  const gv = parseInt(document.getElementById('gv-'+partidoId)?.value)
+  if (isNaN(gl) || isNaN(gv)) { showToast('Ingresá ambos goles','warn'); return }
+
+  // Actualizar partido
+  await db.from('partidos').update({ goles_local: gl, goles_visitante: gv, jugado: true, cerrado: true }).eq('id', partidoId)
+
+  // Calcular puntos de predicciones
+  const { data: preds } = await db.from('predicciones_partidos').select('id,goles_local_pred,goles_visitante_pred').eq('partido_id', partidoId)
+  for (const pred of (preds || [])) {
+    const pts = calcPtsPartido(pred.goles_local_pred, pred.goles_visitante_pred, gl, gv)
+    await db.from('predicciones_partidos').update({ puntos_obtenidos: pts }).eq('id', pred.id)
+  }
+
+  await cargarPartidosAdmin()
+  renderPartidosTable()
+  document.getElementById('pendBadge').textContent = allPartidos.filter(p=>p.jugado).length
+  showToast(`Resultado ${gl}–${gv} cargado. Ahora cargá el rendimiento.`, 'warn')
+}
+
+function calcPtsPartido(pL, pV, rL, rV) {
+  if (pL === rL && pV === rV) return 5
+  if ((pL > pV && rL > rV) || (pL < pV && rL < rV) || (pL === pV && rL === rV)) return 3
+  return 0
+}
+
+async function cerrarPartido(partidoId) {
+  await db.from('partidos').update({ cerrado: true }).eq('id', partidoId)
+  await cargarPartidosAdmin()
+  renderPartidosTable()
+  showToast('Partido cerrado para nuevas predicciones')
+}
+
+function irARendimiento(partidoId) {
+  showSection('rendimiento', document.querySelectorAll('.nav-item')[2])
+  // Seleccionar el partido en el select
+  setTimeout(() => {
+    const sel = document.getElementById('rendPartidoSelect')
+    sel.value = partidoId
+    cargarFormRendimiento()
+  }, 100)
+}
+
+async function cargarFormRendimiento() {
+  const partidoId = document.getElementById('rendPartidoSelect').value
+  if (!partidoId) {
+    document.getElementById('rendFormContainer').innerHTML = '<div class="empty-state">Elegí un partido arriba.</div>'
+    document.getElementById('rendActions').style.display = 'none'
+    return
+  }
+
+  const partido = allPartidos.find(p => p.id === partidoId)
+  if (!partido) return
+
+  // Jugadores de ambos equipos
+  const jugadoresLocal = allJugadores.filter(j => j.pais?.nombre === partido.pais_local?.nombre)
+  const jugadoresVisitante = allJugadores.filter(j => j.pais?.nombre === partido.pais_visitante?.nombre)
+
+  // Rendimientos ya cargados
+  const { data: rends } = await db.from('rendimiento_jugadores').select('*').eq('partido_id', partidoId)
+  const rendMap = {}
+  ;(rends||[]).forEach(r => rendMap[r.jugador_id] = r)
+
+  function renderJugadores(jugadores) {
+    return jugadores.map(j => {
+      const r = rendMap[j.id] || {}
+      return `<div class="rend-row" id="rend-${j.id}">
+        <div>${j.pais?.url_bandera ? `<img class="flag-img" src="${j.pais.url_bandera}" style="width:20px;height:13px">` : ''}</div>
+        <div>
+          <div style="font-size:13px;font-weight:500">${j.nombre}</div>
+          <div style="font-size:10px;color:var(--muted)">${j.posicion}</div>
+        </div>
+        <input class="nota-inp" type="number" step="0.1" min="1" max="10" value="${r.nota_sofascore||''}" placeholder="–" id="nota-${j.id}">
+        <input class="num-inp" type="number" min="0" max="20" value="${r.goles||0}" id="goles-${j.id}">
+        <input class="num-inp" type="number" min="0" max="20" value="${r.asistencias||0}" id="asist-${j.id}">
+        <input type="checkbox" class="check-inp" id="motm-${j.id}" ${r.motm?'checked':''} title="MOTM">
+        <input type="checkbox" class="check-inp" id="valla-${j.id}" ${r.valla_invicta?'checked':''} title="Valla invicta">
+        <input class="num-inp" type="number" min="0" max="120" value="${r.minutos_jugados||0}" id="min-${j.id}">
+      </div>`
+    }).join('')
+  }
+
+  document.getElementById('rendFormContainer').innerHTML = `
+    <div class="rend-panel">
+      <div class="rend-row rend-header"><div></div><div>Jugador</div><div>Nota SS</div><div>Goles</div><div>Asist.</div><div>MOTM</div><div>Valla</div><div>Min.</div></div>
+      <div style="padding:6px 16px;font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);background:rgba(255,255,255,.02);border-bottom:1px solid var(--border);">
+        ${partido.pais_local?.url_bandera ? `<img class="flag-img" src="${partido.pais_local.url_bandera}">` : ''} ${partido.pais_local?.nombre}
+      </div>
+      ${renderJugadores(jugadoresLocal)}
+      <div style="padding:6px 16px;font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);background:rgba(255,255,255,.02);border-bottom:1px solid var(--border);">
+        ${partido.pais_visitante?.url_bandera ? `<img class="flag-img" src="${partido.pais_visitante.url_bandera}">` : ''} ${partido.pais_visitante?.nombre}
+      </div>
+      ${renderJugadores(jugadoresVisitante)}
+    </div>`
+
+  document.getElementById('rendActions').style.display = 'flex'
+}
+
+async function guardarRendimiento() {
+  const partidoId = document.getElementById('rendPartidoSelect').value
+  if (!partidoId) return
+
+  const partido = allPartidos.find(p => p.id === partidoId)
+  const jugadoresLocal = allJugadores.filter(j => j.pais?.nombre === partido.pais_local?.nombre)
+  const jugadoresVisitante = allJugadores.filter(j => j.pais?.nombre === partido.pais_visitante?.nombre)
+  const todosJugadores = [...jugadoresLocal, ...jugadoresVisitante]
+
+  const rendimientos = []
+  for (const j of todosJugadores) {
+    const nota = parseFloat(document.getElementById('nota-'+j.id)?.value)
+    const goles = parseInt(document.getElementById('goles-'+j.id)?.value) || 0
+    const asist = parseInt(document.getElementById('asist-'+j.id)?.value) || 0
+    const motm = document.getElementById('motm-'+j.id)?.checked || false
+    const valla = document.getElementById('valla-'+j.id)?.checked || false
+    const min = parseInt(document.getElementById('min-'+j.id)?.value) || 0
+    if (!nota && min === 0) continue
+    rendimientos.push({ jugador_id: j.id, partido_id: partidoId, nota_sofascore: nota||null, goles, asistencias: asist, motm, valla_invicta: valla, minutos_jugados: min })
+  }
+
+  const btn = document.getElementById('btnGuardarRend')
+  btn.disabled = true; btn.textContent = 'Guardando...'
+
+  await db.from('rendimiento_jugadores').upsert(rendimientos, { onConflict: 'jugador_id,partido_id' })
+
+  // Calcular puntos fantasy para todos los equipos
+  await calcularPuntosFantasy(partidoId, rendimientos)
+
+  btn.disabled = false; btn.textContent = 'Guardar y calcular puntos'
+  showToast('Rendimiento guardado y puntos calculados para todos los usuarios')
+}
+
+async function calcularPuntosFantasy(partidoId, rendimientos) {
+  const { data: equipos } = await db.from('equipos_fantasy').select('usuario_id,arquero_id,def1_id,def2_id,def3_id,def4_id,med1_id,med2_id,med3_id,del1_id,del2_id,del3_id,suplente_def_id,suplente_med_id,suplente_del_id')
+
+  const rendMap = {}
+  rendimientos.forEach(r => rendMap[r.jugador_id] = r)
+
+  const puntos = []
+  for (const eq of (equipos||[])) {
+    const slots = ['arquero_id','def1_id','def2_id','def3_id','def4_id','med1_id','med2_id','med3_id','del1_id','del2_id','del3_id']
+    const suplentes = { 'def':'suplente_def_id', 'med':'suplente_med_id', 'del':'suplente_del_id' }
+
+    for (const slot of slots) {
+      const jugId = eq[slot]
+      if (!jugId) continue
+      let rend = rendMap[jugId]
+      let esSuplente = false
+
+      // Si el titular no jugó 30+ min, intentar suplente
+      if (!rend || rend.minutos_jugados <= 30) {
+        const pos = slot.replace(/_id/,'').replace(/\d/,'')
+        const supSlot = suplentes[pos === 'arquero' ? null : pos]
+        if (supSlot && eq[supSlot]) {
+          const supRend = rendMap[eq[supSlot]]
+          if (supRend && supRend.minutos_jugados > 30) {
+            rend = supRend; esSuplente = true
+          }
+        }
+        if (!esSuplente) continue
+      }
+
+      if (!rend || rend.minutos_jugados <= 30) continue
+
+      const jugador = allJugadores.find(j => j.id === (esSuplente ? rend.jugador_id : jugId))
+      const pos = jugador?.posicion || 'delantero'
+      const ptsNota = calcNota(rend.nota_sofascore)
+      const ptsBonus = calcBonus(pos, rend.goles, rend.asistencias, rend.motm, rend.valla_invicta)
+
+      puntos.push({ usuario_id: eq.usuario_id, jugador_id: rend.jugador_id, partido_id: partidoId, es_suplente: esSuplente, pts_nota: ptsNota, pts_bonus: ptsBonus, pts_total: ptsNota + ptsBonus })
+    }
+  }
+
+  if (puntos.length > 0) {
+    await db.from('puntos_fantasy').upsert(puntos, { onConflict: 'usuario_id,jugador_id,partido_id' })
+  }
+}
+
+function calcNota(n) {
+  if (!n) return 0
+  if (n >= 9) return 3; if (n >= 7.5) return 2; if (n >= 6.5) return 1
+  if (n >= 5) return 0; if (n >= 4) return -1; return -2
+}
+
+function calcBonus(pos, goles, asist, motm, valla) {
+  const ptsGol = pos === 'defensor' ? 2 : 1
+  return (goles * ptsGol) + (asist * 0.5) + (motm ? 1 : 0) + (valla && pos === 'arquero' ? 1 : 0)
+}
+
+async function cargarUsuarios() {
+  const { data } = await db.from('usuarios').select('id,nombre,email,es_admin,creado_en').order('creado_en', { ascending: false })
+  allUsuarios = data || []
+
+  const [{ count: cEquipos }, { data: preds }] = await Promise.all([
+    db.from('equipos_fantasy').select('usuario_id', { count: 'exact' }),
+    db.from('predicciones_partidos').select('usuario_id')
+  ])
+
+  const conEquipo = new Set((await db.from('equipos_fantasy').select('usuario_id')).data?.map(e=>e.usuario_id)||[])
+  const conPreds = new Set(preds?.map(p=>p.usuario_id)||[])
+
+  renderUsuarios(allUsuarios, conEquipo, conPreds)
+
+  document.getElementById('sinEquipo').textContent = allUsuarios.length - conEquipo.size
+  document.getElementById('sinPredicciones').textContent = allUsuarios.length - conPreds.size
+}
+
+function renderUsuarios(usuarios, conEquipo, conPreds) {
+  const rows = usuarios.map(u => `
+    <tr>
+      <td><b>${u.nombre || '–'}</b></td>
+      <td style="color:var(--muted)">${u.email}</td>
+      <td>${conEquipo?.has(u.id) ? '<span class="pill pill-played">Completo</span>' : '<span class="pill pill-pending">Sin equipo</span>'}</td>
+      <td>${conPreds?.has(u.id) ? '<span class="pill pill-open">Sí</span>' : '<span class="pill pill-pending">No</span>'}</td>
+      <td>–</td>
+      <td>${u.es_admin ? '<span class="pill pill-locked">Admin</span>' : '<button class="btn btn-outline btn-sm" onclick="hacerAdmin(\''+u.id+'\')">Hacer admin</button>'}</td>
+    </tr>`).join('')
+  document.getElementById('usuariosTable').innerHTML = rows || '<tr><td colspan="6" class="empty-state">No hay usuarios</td></tr>'
+}
+
+function filtrarUsuarios() {
+  const q = document.getElementById('userSearch').value.toLowerCase()
+  const filtrados = allUsuarios.filter(u => u.nombre?.toLowerCase().includes(q) || u.email?.toLowerCase().includes(q))
+  renderUsuarios(filtrados, null, null)
+}
+
+async function hacerAdmin(userId) {
+  if (!confirm('¿Dar permisos de admin a este usuario?')) return
+  await db.from('usuarios').update({ es_admin: true }).eq('id', userId)
+  await cargarUsuarios()
+  showToast('Usuario actualizado a admin')
+}
+
+async function cargarGanadores() {
+  const paisOptions = allPaises.map(p => `<option value="${p.id}">${p.nombre}</option>`).join('')
+  const jugOptions = allJugadores.map(j => `<option value="${j.id}">${j.nombre} (${j.pais?.nombre})</option>`).join('')
+  const arqOptions = allJugadores.filter(j=>j.posicion==='arquero').map(j => `<option value="${j.id}">${j.nombre} (${j.pais?.nombre})</option>`).join('')
+
+  document.getElementById('ganPodio').innerHTML = [
+    {id:'gan-campeon',lbl:'Campeón',pts:'25 pts',opts:paisOptions},
+    {id:'gan-sub',lbl:'Subcampeón',pts:'20 pts',opts:paisOptions},
+    {id:'gan-tercero',lbl:'3er puesto',pts:'15 pts',opts:paisOptions}
+  ].map(g => `<div class="ganador-card"><div class="gc-label">${g.lbl}<span class="gc-pts">${g.pts}</span></div><select id="${g.id}"><option value="">-- Seleccionar --</option>${g.opts}</select></div>`).join('')
+
+  document.getElementById('ganPremios').innerHTML = [
+    {id:'gan-goleador',lbl:'Goleador',pts:'10 pts',opts:jugOptions},
+    {id:'gan-mvp',lbl:'Mejor jugador',pts:'10 pts',opts:jugOptions},
+    {id:'gan-arquero',lbl:'Mejor arquero',pts:'10 pts',opts:arqOptions},
+    {id:'gan-revelacion',lbl:'Revelación',pts:'10 pts',opts:jugOptions}
+  ].map(g => `<div class="ganador-card"><div class="gc-label">${g.lbl}<span class="gc-pts">${g.pts}</span></div><select id="${g.id}"><option value="">-- Seleccionar --</option>${g.opts}</select></div>`).join('')
+}
+
+async function guardarGanadores() {
+  const campeonId = document.getElementById('gan-campeon').value
+  const subId = document.getElementById('gan-sub').value
+  const terceroId = document.getElementById('gan-tercero').value
+  const goleadorId = document.getElementById('gan-goleador').value
+  const mvpId = document.getElementById('gan-mvp').value
+  const arqueroId = document.getElementById('gan-arquero').value
+  const revelacionId = document.getElementById('gan-revelacion').value
+
+  if (!campeonId || !subId || !terceroId || !goleadorId || !mvpId || !arqueroId || !revelacionId) {
+    showToast('Completá todos los campos antes de confirmar', 'warn'); return
+  }
+
+  // Calcular puntos especiales para cada usuario
+  const { data: preds } = await db.from('predicciones_especiales').select('*')
+  for (const pred of (preds||[])) {
+    const pts = {
+      pts_campeon:    pred.campeon_id === campeonId ? 25 : 0,
+      pts_subcampeon: pred.subcampeon_id === subId ? 20 : 0,
+      pts_tercero:    pred.tercero_id === terceroId ? 15 : 0,
+      pts_goleador:   pred.goleador_id === goleadorId ? 10 : 0,
+      pts_mvp:        pred.mejor_jugador_id === mvpId ? 10 : 0,
+      pts_arquero:    pred.mejor_arquero_id === arqueroId ? 10 : 0,
+      pts_revelacion: pred.revelacion_id === revelacionId ? 10 : 0,
+    }
+    pts.pts_total = Object.values(pts).reduce((a,b) => a+b, 0)
+    await db.from('puntos_especiales').upsert({ usuario_id: pred.usuario_id, ...pts }, { onConflict: 'usuario_id' })
+  }
+
+  showToast('Ganadores guardados y puntos calculados para todos los usuarios')
+}
+
+async function bloquearPredicciones() {
+  if (!confirm('¿Bloquear TODAS las predicciones? Esto no se puede deshacer.')) return
+  await db.from('predicciones_especiales').update({ bloqueado: true }).neq('id', '00000000-0000-0000-0000-000000000000')
+  await db.from('partidos').update({ cerrado: true }).eq('jugado', false)
+  showToast('Todas las predicciones bloqueadas')
+}
+
+async function bloquearEquipos() {
+  if (!confirm('¿Bloquear TODOS los equipos fantasy?')) return
+  await db.from('equipos_fantasy').update({ bloqueado: true }).neq('id', '00000000-0000-0000-0000-000000000000')
+  showToast('Todos los equipos bloqueados')
+}
+
+// Poblar select de rendimiento con partidos jugados
+function poblarSelectRendimiento() {
+  const jugados = allPartidos.filter(p => p.jugado)
+  const sel = document.getElementById('rendPartidoSelect')
+  sel.innerHTML = '<option value="">-- Elegir partido --</option>' +
+    jugados.map(p => `<option value="${p.id}">${p.pais_local?.nombre} ${p.goles_local}–${p.goles_visitante} ${p.pais_visitante?.nombre}</option>`).join('')
+}
+
+function openModalPartido(tipo) {
+  document.getElementById('modalPartidoTitle').textContent = tipo === 'elim' ? 'Cargar cruce eliminatoria' : 'Nuevo partido'
+  const opts = '<option value="">-- Seleccionar --</option>' + allPaises.map(p => `<option value="${p.id}">${p.nombre} (Grupo ${p.grupo})</option>`).join('')
+  document.getElementById('mpLocal').innerHTML = opts
+  document.getElementById('mpVisitante').innerHTML = opts
+  document.getElementById('modalPartido').classList.add('show')
+}
+
+async function guardarPartido() {
+  const local = document.getElementById('mpLocal').value
+  const visitante = document.getElementById('mpVisitante').value
+  const fase = document.getElementById('mpFase').value
+  const ronda = document.getElementById('mpRonda').value
+  const fecha = document.getElementById('mpFecha').value
+  const estadio = document.getElementById('mpEstadio').value
+  if (!local || !visitante || !fecha) { showToast('Completá local, visitante y fecha','warn'); return }
+  await db.from('partidos').insert({ pais_local_id: local, pais_visitante_id: visitante, fase, ronda, fecha_hora: fecha, estadio })
+  await cargarPartidosAdmin()
+  renderPartidosTable()
+  closeModal('modalPartido')
+  showToast('Partido guardado')
+}
+
+function setFase(fase, btn) {
+  document.querySelectorAll('#faseTabs .btn').forEach(b => { b.className = 'btn btn-outline btn-sm' })
+  btn.className = 'btn btn-primary btn-sm'
+  document.getElementById('tabla-grupos').style.display = fase === 'grupos' ? '' : 'none'
+  document.getElementById('tabla-elim').style.display   = fase === 'elim'   ? '' : 'none'
+  if (fase === 'grupos') renderPartidosTable()
+}
+
+function showSection(sec, el) {
+  document.querySelectorAll('[id^="sec-"]').forEach(s => s.style.display = 'none')
+  document.getElementById('sec-'+sec).style.display = 'block'
+  document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'))
+  el.classList.add('active')
+  const titles = { dashboard:'Dashboard', partidos:'Partidos', rendimiento:'Carga de rendimiento', eliminatorias:'Eliminatorias', ganadores:'Ganadores especiales', usuarios:'Usuarios', config:'Configuración' }
+  document.getElementById('topbarTitle').textContent = titles[sec] || sec
+
+  if (sec === 'partidos') renderPartidosTable()
+  if (sec === 'rendimiento') poblarSelectRendimiento()
+  if (sec === 'usuarios') cargarUsuarios()
+  if (sec === 'ganadores') cargarGanadores()
+  if (sec === 'config') cargarUsuarios()
+}
+
+function closeModal(id) { document.getElementById(id).classList.remove('show') }
+function maybeClose(e, id) { if (e.target === document.getElementById(id)) closeModal(id) }
+
+async function logout() { await db.auth.signOut(); window.location.href = 'login.html' }
+
+function showToast(msg, type) {
+  const t = document.getElementById('toast')
+  t.textContent = msg; t.className = 'toast' + (type ? ' '+type : '')
+  t.classList.add('show')
+  setTimeout(() => t.classList.remove('show'), 3000)
+}
+
+init()
+</script>
+</body>
+</html>
