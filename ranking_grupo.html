@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ranking del grupo · Prode Mundial 2026</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root{--verde:#00C853;--oro:#FFD600;--bg:#0a0e17;--bg2:#111827;--bg3:#1a2235;--texto:#e8edf5;--muted:#6b7a99;--border:rgba(255,255,255,0.07);--card:rgba(255,255,255,0.04);}
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--texto);min-height:100vh;}
+  body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellipse 80% 50% at 20% 10%,rgba(0,200,83,0.07) 0%,transparent 60%),radial-gradient(ellipse 60% 40% at 80% 80%,rgba(255,214,0,0.05) 0%,transparent 55%);pointer-events:none;z-index:0;}
+  nav{position:sticky;top:0;z-index:100;background:rgba(10,14,23,0.85);backdrop-filter:blur(12px);border-bottom:1px solid var(--border);padding:0 2rem;height:56px;display:flex;align-items:center;justify-content:space-between;}
+  .nav-logo{font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:2px;display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--texto);}
+  .nav-logo .dot{width:8px;height:8px;border-radius:50%;background:var(--verde);box-shadow:0 0 8px var(--verde);animation:pulse 2s ease-in-out infinite;}
+  @keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.6;transform:scale(.8)}}
+  .back-btn{font-size:13px;color:var(--muted);background:none;border:1px solid var(--border);border-radius:6px;padding:5px 12px;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all .15s;text-decoration:none;}
+  .back-btn:hover{color:var(--texto);border-color:var(--muted);}
+  .wrapper{position:relative;z-index:1;max-width:800px;margin:0 auto;padding:2rem 2rem 4rem;}
+  @keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+
+  /* HEADER */
+  .group-header{margin-bottom:2rem;animation:fadeUp .35s ease both;}
+  .group-name{font-family:'Bebas Neue',sans-serif;font-size:48px;line-height:1;letter-spacing:2px;margin-bottom:8px;}
+  .group-meta{display:flex;align-items:center;gap:16px;font-size:13px;color:var(--muted);}
+  .group-code-pill{background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:4px 14px;font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:2px;color:var(--oro);}
+  .copy-btn{font-size:11px;color:var(--muted);background:none;border:1px solid var(--border);border-radius:4px;padding:3px 8px;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all .15s;}
+  .copy-btn:hover{color:var(--texto);}
+
+  /* STATS */
+  .stats-row{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:2rem;animation:fadeUp .4s .05s ease both;}
+  .stat-card{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:14px 16px;text-align:center;}
+  .stat-val{font-family:'Bebas Neue',sans-serif;font-size:36px;line-height:1;}
+  .stat-lbl{font-size:11px;color:var(--muted);margin-top:4px;text-transform:uppercase;letter-spacing:.5px;}
+
+  /* RANKING */
+  .ranking-card{background:var(--bg2);border:1px solid var(--border);border-radius:16px;overflow:hidden;animation:fadeUp .4s .1s ease both;}
+  .ranking-header{padding:1rem 1.5rem;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;}
+  .ranking-header h3{font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:1px;}
+
+  .rank-row{display:flex;align-items:center;gap:12px;padding:14px 1.5rem;border-bottom:1px solid var(--border);transition:background .15s;}
+  .rank-row:last-child{border-bottom:none;}
+  .rank-row:hover{background:rgba(255,255,255,.02);}
+  .rank-row.me{background:rgba(0,200,83,.05);border-left:3px solid var(--verde);}
+  .rank-row.me .rank-name{color:var(--verde);}
+
+  .rank-pos{font-family:'Bebas Neue',sans-serif;font-size:24px;min-width:32px;text-align:center;}
+  .rank-pos.gold{color:var(--oro);}
+  .rank-pos.silver{color:#b4b4c8;}
+  .rank-pos.bronze{color:#c8823c;}
+  .rank-pos.other{color:var(--muted);}
+
+  .rank-medal{font-size:20px;min-width:28px;text-align:center;}
+
+  .rank-avatar{width:36px;height:36px;border-radius:50%;background:var(--bg3);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:500;flex-shrink:0;border:1px solid var(--border);}
+  .rank-avatar.me{background:rgba(0,200,83,.15);border-color:rgba(0,200,83,.3);color:var(--verde);}
+
+  .rank-info{flex:1;}
+  .rank-name{font-size:14px;font-weight:500;}
+  .rank-detail{font-size:11px;color:var(--muted);margin-top:2px;}
+
+  .rank-pts-wrap{text-align:right;}
+  .rank-pts{font-family:'Bebas Neue',sans-serif;font-size:28px;line-height:1;}
+  .rank-pts-lbl{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;}
+
+  .rank-breakdown{display:flex;gap:10px;margin-top:4px;}
+  .breakdown-item{font-size:11px;color:var(--muted);background:var(--bg3);border-radius:4px;padding:2px 6px;}
+  .breakdown-item span{color:var(--texto);font-weight:500;}
+
+  /* SKELETON */
+  .skeleton{background:linear-gradient(90deg,var(--bg3) 25%,var(--bg2) 50%,var(--bg3) 75%);background-size:200% 100%;animation:shimmer 1.2s infinite;border-radius:6px;}
+  @keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
+
+  /* EMPTY */
+  .empty{padding:3rem;text-align:center;color:var(--muted);font-size:13px;}
+  .empty .big{font-size:36px;margin-bottom:8px;}
+
+  /* INVITE */
+  .invite-card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:1.5rem;margin-top:1.5rem;animation:fadeUp .4s .15s ease both;}
+  .invite-title{font-size:14px;font-weight:500;margin-bottom:8px;}
+  .invite-desc{font-size:13px;color:var(--muted);margin-bottom:12px;}
+  .invite-row{display:flex;gap:8px;align-items:center;}
+  .invite-input{flex:1;background:var(--bg3);border:1px solid var(--border);border-radius:8px;color:var(--texto);font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:2px;padding:8px 14px;outline:none;}
+  .btn-copy{background:var(--verde);color:#000;font-family:'Bebas Neue',sans-serif;font-size:14px;letter-spacing:1px;border:none;border-radius:8px;padding:10px 20px;cursor:pointer;transition:all .2s;}
+  .btn-copy:hover{background:#009624;}
+</style>
+</head>
+<body>
+
+<nav>
+  <a href="hub.html" class="nav-logo"><div class="dot"></div>PRODE MUNDIAL</a>
+  <a href="hub.html" class="back-btn">← Volver al hub</a>
+</nav>
+
+<div class="wrapper">
+
+  <!-- HEADER -->
+  <div class="group-header">
+    <div class="group-name" id="groupName">Cargando...</div>
+    <div class="group-meta">
+      <span id="memberCount">– miembros</span>
+      <div class="group-code-pill" id="groupCode">––––––</div>
+      <button class="copy-btn" id="copyBtn" onclick="copiarCodigo()">Copiar código</button>
+    </div>
+  </div>
+
+  <!-- STATS -->
+  <div class="stats-row">
+    <div class="stat-card">
+      <div class="stat-val" style="color:var(--verde)" id="statMiembros">–</div>
+      <div class="stat-lbl">Miembros</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-val" style="color:var(--oro)" id="statLider">–</div>
+      <div class="stat-lbl">Líder del grupo</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-val" style="color:var(--texto)" id="statMiPos">–</div>
+      <div class="stat-lbl">Tu posición</div>
+    </div>
+  </div>
+
+  <!-- RANKING -->
+  <div class="ranking-card">
+    <div class="ranking-header">
+      <h3>Ranking del grupo</h3>
+      <span style="font-size:12px;color:var(--muted)">Actualizado en tiempo real</span>
+    </div>
+    <div id="rankingList">
+      <div style="padding:1.5rem">
+        <div class="skeleton" style="height:50px;margin-bottom:10px;border-radius:10px"></div>
+        <div class="skeleton" style="height:50px;margin-bottom:10px;border-radius:10px"></div>
+        <div class="skeleton" style="height:50px;border-radius:10px"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- INVITAR -->
+  <div class="invite-card">
+    <div class="invite-title">Invitar más participantes</div>
+    <div class="invite-desc">Compartí el código para que otros se unan al grupo.</div>
+    <div class="invite-row">
+      <input type="text" class="invite-input" id="inviteCode" readonly>
+      <button class="btn-copy" onclick="copiarCodigo()">Copiar</button>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const SUPABASE_URL = "https://ipmyezwxpxnyukyurhqd.supabase.co"
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlwbXllend4cHhueXVreXVyaHFkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc0NjA2OTksImV4cCI6MjA5MzAzNjY5OX0.yRG5H0rsGC6lHcIt1kqPzzzyIUQ8s0ttD73g3Q8rJcI"
+const { createClient } = supabase
+const db = createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+
+let currentUser = null
+let grupoId = null
+
+async function init() {
+  const { data } = await db.auth.getSession()
+  if (!data.session) { window.location.href = 'login.html'; return }
+  currentUser = data.session.user
+
+  // Obtener grupo_id de la URL
+  const params = new URLSearchParams(window.location.search)
+  grupoId = params.get('grupo')
+  if (!grupoId) { window.location.href = 'hub.html'; return }
+
+  await cargarGrupo()
+  await cargarRanking()
+}
+
+async function cargarGrupo() {
+  const { data: grupo } = await db
+    .from('grupos_privados')
+    .select('id,nombre,codigo_invitacion,creador_id')
+    .eq('id', grupoId)
+    .single()
+
+  if (!grupo) { window.location.href = 'hub.html'; return }
+
+  document.getElementById('groupName').textContent = grupo.nombre
+  document.getElementById('groupCode').textContent = grupo.codigo_invitacion
+  document.getElementById('inviteCode').value = grupo.codigo_invitacion
+  document.title = grupo.nombre + ' · Prode Mundial 2026'
+
+  // Contar miembros
+  const { count } = await db
+    .from('miembros_grupo')
+    .select('*', { count: 'exact', head: true })
+    .eq('grupo_id', grupoId)
+
+  document.getElementById('memberCount').textContent = (count || 0) + ' miembros'
+  document.getElementById('statMiembros').textContent = count || 0
+}
+
+async function cargarRanking() {
+  // Traer miembros del grupo
+  const { data: miembros } = await db
+    .from('miembros_grupo')
+    .select('usuario_id')
+    .eq('grupo_id', grupoId)
+
+  if (!miembros || miembros.length === 0) {
+    document.getElementById('rankingList').innerHTML = '<div class="empty"><div class="big">👥</div>Aún no hay miembros en este grupo.</div>'
+    return
+  }
+
+  const userIds = miembros.map(m => m.usuario_id)
+
+  // Traer ranking de esos usuarios
+  const { data: ranking } = await db
+    .from('ranking_global')
+    .select('usuario_id,nombre,pts_total,pts_predicciones,pts_fantasy,pts_especiales,resultados_exactos')
+    .in('usuario_id', userIds)
+    .order('pts_total', { ascending: false })
+
+  if (!ranking || ranking.length === 0) {
+    document.getElementById('rankingList').innerHTML = '<div class="empty"><div class="big">🏆</div>Aún no hay puntos. ¡El torneo arranca el 11 de junio!</div>'
+    document.getElementById('statLider').textContent = '–'
+    document.getElementById('statMiPos').textContent = '–'
+    return
+  }
+
+  // Lider
+  document.getElementById('statLider').textContent = ranking[0]?.nombre?.split(' ')[0] || '–'
+
+  // Mi posición
+  const miIdx = ranking.findIndex(r => r.usuario_id === currentUser.id)
+  document.getElementById('statMiPos').textContent = miIdx >= 0 ? `#${miIdx + 1}` : '–'
+
+  const medals = ['🥇','🥈','🥉']
+  const posClasses = ['gold','silver','bronze']
+
+  const html = ranking.map((r, i) => {
+    const isMe = r.usuario_id === currentUser.id
+    const initials = (r.nombre || 'U').slice(0,2).toUpperCase()
+    const posClass = i < 3 ? posClasses[i] : 'other'
+    const medal = i < 3 ? medals[i] : ''
+    const pts = parseFloat(r.pts_total || 0)
+
+    return `
+      <div class="rank-row ${isMe ? 'me' : ''}">
+        <div class="rank-pos ${posClass}">${i + 1}</div>
+        <div class="rank-medal">${medal}</div>
+        <div class="rank-avatar ${isMe ? 'me' : ''}">${initials}</div>
+        <div class="rank-info">
+          <div class="rank-name">${isMe ? '⭐ ' : ''}${r.nombre || 'Usuario'}</div>
+          <div class="rank-breakdown">
+            <div class="breakdown-item">Pred: <span>${r.pts_predicciones || 0}</span></div>
+            <div class="breakdown-item">Fantasy: <span>${parseFloat(r.pts_fantasy || 0).toFixed(1)}</span></div>
+            <div class="breakdown-item">Especiales: <span>${r.pts_especiales || 0}</span></div>
+            <div class="breakdown-item">Exactos: <span>${r.resultados_exactos || 0}</span></div>
+          </div>
+        </div>
+        <div class="rank-pts-wrap">
+          <div class="rank-pts" style="${i === 0 ? 'color:var(--oro)' : isMe ? 'color:var(--verde)' : ''}">${pts % 1 === 0 ? pts : pts.toFixed(1)}</div>
+          <div class="rank-pts-lbl">puntos</div>
+        </div>
+      </div>`
+  }).join('')
+
+  document.getElementById('rankingList').innerHTML = html
+}
+
+function copiarCodigo() {
+  const codigo = document.getElementById('groupCode').textContent
+  navigator.clipboard.writeText(codigo)
+  const btn = document.getElementById('copyBtn')
+  btn.textContent = '¡Copiado!'
+  setTimeout(() => btn.textContent = 'Copiar código', 2000)
+}
+
+init()
+</script>
+</body>
+</html>
