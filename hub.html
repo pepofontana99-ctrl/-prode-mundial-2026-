@@ -429,7 +429,7 @@
         else if (pts === 0) badgeHtml = `<span class="pred-badge miss">${pred.goles_local_pred}-${pred.goles_visitante_pred} · +0</span>`
       }
     } else {
-      const fecha = p.fecha_hora ? new Date(p.fecha_hora).toLocaleDateString('es-AR',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}) : 'Próximamente'
+      const fecha = p.fecha_hora ? new Date(p.fecha_hora).toLocaleDateString('es-AR',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit',timeZone:'America/Argentina/Buenos_Aires'}) : 'Próximamente'
       centerHtml = `<div class="match-score">· VS ·</div><div class="match-time">${fecha}</div>`
       const pred = misPredMap[p.id]
       badgeHtml = pred

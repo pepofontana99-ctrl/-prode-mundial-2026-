@@ -259,29 +259,66 @@
 
     <!-- CONFIG -->
     <div id="sec-config" style="display:none">
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.25rem;">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.25rem;margin-bottom:1.25rem;">
+
         <div class="table-wrap" style="margin-bottom:0">
           <div class="table-header"><h3>Estado del torneo</h3></div>
           <div style="padding:1.25rem;display:flex;flex-direction:column;gap:12px;">
             <div class="form-group" style="margin:0">
-              <label class="form-label">Bloquear predicciones (inicio del torneo)</label>
+              <label class="form-label">Bloquear predicciones</label>
               <button class="btn btn-danger" style="width:100%;margin-top:6px" onclick="bloquearPredicciones()">🔒 Bloquear todas las predicciones</button>
             </div>
             <div class="form-group" style="margin:0;padding-top:12px;border-top:1px solid var(--border)">
               <label class="form-label">Bloquear equipos fantasy</label>
               <button class="btn btn-danger" style="width:100%;margin-top:6px" onclick="bloquearEquipos()">🔒 Bloquear todos los equipos</button>
             </div>
+            <div style="padding-top:12px;border-top:1px solid var(--border)">
+              <div style="font-size:13px;color:var(--muted);margin-bottom:6px">Sin equipo:</div>
+              <div style="font-family:'Bebas Neue',sans-serif;font-size:28px;color:var(--rojo)" id="sinEquipo">–</div>
+              <div style="font-size:13px;color:var(--muted);margin-top:10px;margin-bottom:6px">Sin predicciones:</div>
+              <div style="font-family:'Bebas Neue',sans-serif;font-size:28px;color:var(--oro)" id="sinPredicciones">–</div>
+            </div>
           </div>
         </div>
+
         <div class="table-wrap" style="margin-bottom:0">
-          <div class="table-header"><h3>Estadísticas rápidas</h3></div>
-          <div style="padding:1.25rem;">
-            <div style="font-size:13px;color:var(--muted);margin-bottom:8px">Usuarios sin equipo:</div>
-            <div style="font-family:'Bebas Neue',sans-serif;font-size:32px;color:var(--rojo)" id="sinEquipo">–</div>
-            <div style="font-size:13px;color:var(--muted);margin-top:12px;margin-bottom:8px">Usuarios sin predicciones:</div>
-            <div style="font-family:'Bebas Neue',sans-serif;font-size:32px;color:var(--oro)" id="sinPredicciones">–</div>
+          <div class="table-header"><h3>📧 Notificaciones por email</h3></div>
+          <div style="padding:1.25rem;display:flex;flex-direction:column;gap:12px;">
+            <div class="form-group" style="margin:0">
+              <label class="form-label">Tipo</label>
+              <select class="form-select" id="emailTipo" onchange="actualizarAsunto()">
+                <option value="resumen">Resumen de puntos de la fecha</option>
+                <option value="recordatorio">Recordatorio — cargar predicciones</option>
+                <option value="bienvenida">Bienvenida al prode</option>
+                <option value="personalizado">Mensaje personalizado</option>
+              </select>
+            </div>
+            <div class="form-group" style="margin:0">
+              <label class="form-label">Destinatarios</label>
+              <select class="form-select" id="emailDest">
+                <option value="todos">Todos los usuarios</option>
+                <option value="sin_predicciones">Sin predicciones cargadas</option>
+                <option value="sin_equipo">Sin equipo armado</option>
+              </select>
+            </div>
+            <div class="form-group" style="margin:0">
+              <label class="form-label">Asunto</label>
+              <input type="text" class="form-input" id="emailAsunto" value="⚽ Resumen de puntos · Prode Mundial 2026">
+            </div>
+            <div class="form-group" style="margin:0">
+              <label class="form-label">Mensaje extra (opcional)</label>
+              <textarea class="form-input" id="emailMensaje" rows="3" style="resize:vertical" placeholder="Texto adicional en el email..."></textarea>
+            </div>
+            <button class="btn btn-primary" onclick="enviarEmails()" id="btnEnviarEmail">📧 Enviar emails</button>
+            <div id="emailStatus" style="display:none;font-size:12px;padding:8px 12px;border-radius:6px;"></div>
           </div>
         </div>
+
+      </div>
+
+      <div class="table-wrap">
+        <div class="table-header"><h3>Historial de envíos</h3></div>
+        <div id="historialEmails"><div class="empty-state">No hay envíos registrados todavía.</div></div>
       </div>
     </div>
 
@@ -454,7 +491,7 @@ function renderPartidosTable() {
   const rows = partidos.map(p => {
     const fl = p.pais_local?.url_bandera ? `<img class="flag-img" src="${p.pais_local.url_bandera}">` : ''
     const fv = p.pais_visitante?.url_bandera ? `<img class="flag-img" src="${p.pais_visitante.url_bandera}">` : ''
-    const fecha = p.fecha_hora ? new Date(p.fecha_hora).toLocaleDateString('es-AR',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}) : '–'
+    const fecha = p.fecha_hora ? new Date(p.fecha_hora).toLocaleDateString('es-AR',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit',timeZone:'America/Argentina/Buenos_Aires'}) : '–'
 
     let estadoPill, resultado, acciones
     if (p.jugado) {
@@ -845,6 +882,119 @@ function closeModal(id) { document.getElementById(id).classList.remove('show') }
 function maybeClose(e, id) { if (e.target === document.getElementById(id)) closeModal(id) }
 
 async function logout() { await db.auth.signOut(); window.location.href = 'login.html' }
+
+// ── EMAIL / BREVO ──
+const BREVO_KEY = "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"
+const APP_URL = "https://prode-mundial-2026-nu.vercel.app"
+let historialEnvios = []
+
+function actualizarAsunto() {
+  const tipo = document.getElementById('emailTipo')?.value
+  const asuntos = {
+    resumen: '⚽ Resumen de puntos · Prode Mundial 2026',
+    recordatorio: '⏰ Recordatorio: cargá tus predicciones · Prode Mundial 2026',
+    bienvenida: '🎉 Bienvenido al Prode Mundial 2026',
+    personalizado: 'Mensaje del Prode Mundial 2026'
+  }
+  const el = document.getElementById('emailAsunto')
+  if (el) el.value = asuntos[tipo] || ''
+}
+
+function generarHtmlEmail(tipo, nombre, ranking, mensajeExtra) {
+  const css = `body{font-family:Arial,sans-serif;background:#0a0e17;margin:0;padding:20px}.wrap{max-width:600px;margin:0 auto;background:#111827;border-radius:16px;overflow:hidden}.hdr{background:#1a2235;padding:28px;text-align:center;border-bottom:1px solid rgba(255,255,255,.07)}.logo{font-size:24px;font-weight:bold;color:#e8edf5;letter-spacing:3px}.bdy{padding:28px;color:#e8edf5}h2{color:#e8edf5;margin-bottom:6px}.sub{color:#6b7a99;font-size:14px;margin-bottom:20px}.rcard{background:#1a2235;border-radius:10px;padding:16px;margin:16px 0}.rrow{display:flex;align-items:center;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.05)}.rrow:last-child{border-bottom:none}.rpos{font-size:18px;font-weight:bold;color:#FFD600;min-width:30px}.rname{flex:1;font-size:14px}.rpts{font-size:18px;font-weight:bold}.myrow{background:rgba(0,200,83,.08);border-radius:8px;padding:12px;margin:12px 0;border-left:3px solid #00C853}.mypt{font-size:30px;font-weight:bold;color:#00C853}.btn{display:inline-block;background:#00C853;color:#000;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:bold;font-size:14px;margin-top:16px}.extra{background:rgba(0,200,83,.06);border-left:3px solid #00C853;padding:10px 14px;border-radius:0 6px 6px 0;margin:14px 0;font-size:14px}.ftr{padding:16px 28px;background:#0a0e17;text-align:center;font-size:12px;color:#6b7a99}`
+
+  const top5 = (ranking||[]).slice(0,5).map((r,i)=>`<div class="rrow"><div class="rpos">${['🥇','🥈','🥉'][i]||((i+1)+'.')}</div><div class="rname">${r.nombre||'Usuario'}</div><div class="rpts">${parseFloat(r.pts_total||0).toFixed(0)}</div></div>`).join('')
+  const miR = ranking?.find(r=>r.nombre===nombre)
+  const miPos = ranking?.findIndex(r=>r.nombre===nombre)
+
+  let body = ''
+  if (tipo==='resumen') {
+    body = `<h2>¡Ya están los puntos! ⚽</h2><p class="sub">Hola ${nombre}, mirá cómo quedaste.</p>${miR?`<div class="myrow"><div style="font-size:11px;color:#6b7a99">Tu posición · #${(miPos||0)+1}</div><div class="mypt">${parseFloat(miR.pts_total||0).toFixed(0)} pts</div><div style="font-size:11px;color:#6b7a99;margin-top:4px">Pred: ${miR.pts_predicciones||0} · Fantasy: ${parseFloat(miR.pts_fantasy||0).toFixed(1)} · Espec: ${miR.pts_especiales||0}</div></div>`:''}<div class="rcard"><div style="font-size:11px;color:#6b7a99;margin-bottom:10px;text-transform:uppercase;letter-spacing:1px">Top 5 global</div>${top5}</div>`
+  } else if (tipo==='recordatorio') {
+    body = `<h2>⏰ ¡No te olvides!</h2><p class="sub">Hola ${nombre}, todavía podés cargar tus predicciones.</p><p style="color:#6b7a99;font-size:14px">El torneo arranca el <strong style="color:#e8edf5">11 de junio 2026</strong>.</p>`
+  } else if (tipo==='bienvenida') {
+    body = `<h2>🎉 ¡Bienvenido al Prode!</h2><p class="sub">Hola ${nombre}, ya estás registrado.</p><p style="color:#6b7a99;font-size:14px">Para participar: cargá tus predicciones, armá tu equipo fantasy y elegí tus especiales.</p>`
+  } else {
+    body = `<h2>Prode Mundial 2026</h2><p class="sub">Hola ${nombre}.</p>`
+  }
+
+  if (mensajeExtra) body += `<div class="extra">${mensajeExtra}</div>`
+  body += `<a href="${APP_URL}/hub.html" class="btn">Ir al Prode →</a>`
+
+  return `<!DOCTYPE html><html><head><style>${css}</style></head><body><div class="wrap"><div class="hdr"><div class="logo">⚽ PRODE MUNDIAL 2026</div></div><div class="bdy">${body}</div><div class="ftr">Prode Mundial 2026 · <a href="${APP_URL}" style="color:#00C853">${APP_URL}</a></div></div></body></html>`
+}
+
+async function enviarEmails() {
+  const tipo = document.getElementById('emailTipo').value
+  const dest = document.getElementById('emailDest').value
+  const asunto = document.getElementById('emailAsunto').value
+  const mensajeExtra = document.getElementById('emailMensaje').value
+  const btn = document.getElementById('btnEnviarEmail')
+  const status = document.getElementById('emailStatus')
+
+  if (!asunto) { showToast('Completá el asunto','warn'); return }
+
+  btn.disabled = true; btn.textContent = 'Enviando...'
+  status.style.display = 'none'
+
+  let { data: usuarios } = await db.from('usuarios').select('id,nombre,email')
+
+  if (dest === 'sin_equipo') {
+    const { data: conEquipo } = await db.from('equipos_fantasy').select('usuario_id')
+    const ids = new Set(conEquipo?.map(e=>e.usuario_id)||[])
+    usuarios = usuarios.filter(u=>!ids.has(u.id))
+  } else if (dest === 'sin_predicciones') {
+    const { data: conPreds } = await db.from('predicciones_partidos').select('usuario_id')
+    const ids = new Set(conPreds?.map(p=>p.usuario_id)||[])
+    usuarios = usuarios.filter(u=>!ids.has(u.id))
+  }
+
+  if (!usuarios?.length) {
+    btn.disabled=false; btn.textContent='📧 Enviar emails'
+    status.style.display='block'; status.style.background='rgba(255,214,0,.1)'; status.style.color='var(--oro)'
+    status.textContent='No hay usuarios para este criterio.'; return
+  }
+
+  let ranking = []
+  if (tipo==='resumen') {
+    const { data: r } = await db.from('ranking_global').select('usuario_id,nombre,pts_total,pts_predicciones,pts_fantasy,pts_especiales').order('pts_total',{ascending:false}).limit(20)
+    ranking = r||[]
+  }
+
+  let enviados=0, errores=0
+  for (const u of usuarios) {
+    if (!u.email) continue
+    const html = generarHtmlEmail(tipo, u.nombre||u.email.split('@')[0], ranking, mensajeExtra)
+    try {
+      const res = await fetch('https://api.brevo.com/v3/smtp/email', {
+        method:'POST',
+        headers:{'Content-Type':'application/json','api-key':BREVO_KEY},
+        body:JSON.stringify({ sender:{name:'Prode Mundial 2026',email:'pepofontana99@gmail.com'}, to:[{email:u.email,name:u.nombre||u.email}], subject:asunto, htmlContent:html })
+      })
+      if (res.ok) enviados++; else errores++
+    } catch(e){ errores++ }
+  }
+
+  btn.disabled=false; btn.textContent='📧 Enviar emails'
+  status.style.display='block'
+  status.style.background = enviados>0?'rgba(0,200,83,.1)':'rgba(255,68,68,.1)'
+  status.style.color = enviados>0?'var(--verde)':'var(--rojo)'
+  status.textContent = enviados>0?`✅ ${enviados} email${enviados>1?'s':''} enviado${enviados>1?'s':''}${errores>0?' · '+errores+' error(es)':''}` : `❌ Error al enviar`
+
+  historialEnvios.unshift({ fecha:new Date().toLocaleString('es-AR'), tipo, destinatarios:dest, enviados, asunto })
+  renderHistorial()
+  if (enviados>0) document.getElementById('emailMensaje').value=''
+}
+
+function renderHistorial() {
+  const el = document.getElementById('historialEmails')
+  if (!el) return
+  if (!historialEnvios.length) { el.innerHTML='<div class="empty-state">No hay envíos registrados todavía.</div>'; return }
+  const tiposL={resumen:'Resumen de puntos',recordatorio:'Recordatorio',bienvenida:'Bienvenida',personalizado:'Personalizado'}
+  const destL={todos:'Todos',sin_predicciones:'Sin predicciones',sin_equipo:'Sin equipo'}
+  const rows=historialEnvios.map(e=>`<tr><td style="color:var(--muted)">${e.fecha}</td><td>${tiposL[e.tipo]||e.tipo}</td><td>${destL[e.destinatarios]||e.destinatarios}</td><td>${e.asunto}</td><td><span class="pill pill-open">${e.enviados} enviados</span></td></tr>`).join('')
+  el.innerHTML=`<table><thead><tr><th>Fecha</th><th>Tipo</th><th>Destinatarios</th><th>Asunto</th><th>Estado</th></tr></thead><tbody>${rows}</tbody></table>`
+}
 
 // ── JUGADORES ──
 let todosJugadores = []
