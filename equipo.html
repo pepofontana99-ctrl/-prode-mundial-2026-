@@ -188,7 +188,7 @@
   async function cargarJugadores() {
     const { data } = await db
       .from('jugadores')
-      .select('id,nombre,posicion,foto_url,pais:pais_id(nombre,url_bandera)')
+      .select('id,nombre,posicion,foto_url,pais_id,pais:pais_id(nombre,url_bandera)')
       .eq('activo',true)
       .order('nombre')
     allPlayers = data || []
@@ -282,6 +282,17 @@
     const p = getPlayer(playerId)
     if (usedIds().includes(playerId)) { showToast(`${p.nombre} ya está en tu equipo`,'error'); return }
     if (p.posicion !== slotPos[activeSlot]) { showToast(`Este slot es para ${slotPos[activeSlot]}`,'error'); return }
+
+    // Máximo 2 jugadores por selección
+    const paisId = p.pais_id
+    const jugadoresMismoPais = usedIds().filter(id => {
+      const j = getPlayer(id)
+      return j && j.pais_id === paisId
+    })
+    if (jugadoresMismoPais.length >= 2) {
+      showToast(`Máximo 2 jugadores por selección (${p.pais?.nombre})`,'error'); return
+    }
+
     team[activeSlot] = playerId
     activeSlot = null
     renderField(); renderList()
@@ -297,6 +308,14 @@
   function renderList() {
     const q = document.getElementById('searchInput').value.toLowerCase()
     const used = usedIds()
+
+    // Contar jugadores por país en el equipo actual
+    const paisCount = {}
+    used.forEach(id => {
+      const j = getPlayer(id)
+      if (j?.pais_id) paisCount[j.pais_id] = (paisCount[j.pais_id] || 0) + 1
+    })
+
     const filtered = allPlayers.filter(p => {
       const matchPos = posFilter === 'all' || p.posicion === posFilter
       const matchSearch = !q || p.nombre.toLowerCase().includes(q) || (p.pais?.nombre||'').toLowerCase().includes(q)
@@ -311,13 +330,17 @@
       html += `<div class="list-section-title">${posLabel[pos]}s</div>`
       groups[pos].forEach(p => {
         const isUsed = used.includes(p.id)
+        const paisLleno = !isUsed && (paisCount[p.pais_id] || 0) >= 2
+        const disabled = isUsed || paisLleno
         const flagHtml = p.pais?.url_bandera ? `<img class="pi-flag-img" src="${p.pais.url_bandera}">` : '<span class="pi-flag">🏳</span>'
-        html += `<div class="player-item ${isUsed?'selected':''}" onclick="${isUsed?'':(`addToSlot('${p.id}')`)}">
+        const badge = isUsed ? '✓' : paisLleno ? '✕' : '+'
+        const metaExtra = paisLleno ? ` · <span style="color:#ff6b6b;font-size:10px">Límite alcanzado</span>` : ''
+        html += `<div class="player-item ${isUsed?'selected':''}" style="${paisLleno?'opacity:.4':''}" onclick="${disabled?'':(`addToSlot('${p.id}')`)}">
           ${flagHtml}
-          <div class="pi-info"><div class="pi-name">${p.nombre}</div><div class="pi-meta">${p.pais?.nombre||''} · ${posLabel[p.posicion]}</div></div>
+          <div class="pi-info"><div class="pi-name">${p.nombre}</div><div class="pi-meta">${p.pais?.nombre||''} · ${posLabel[p.posicion]}${metaExtra}</div></div>
           <span class="pos-badge ${posBadge[p.posicion]}">${posLabel[p.posicion]}</span>
-          <button class="add-btn" ${isUsed?'disabled style="opacity:.4;cursor:default"':''} onclick="event.stopPropagation();${isUsed?'':(`addToSlot('${p.id}')`)}">
-            ${isUsed?'✓':'+'}
+          <button class="add-btn" ${disabled?'disabled style="opacity:.4;cursor:default"':''} onclick="event.stopPropagation();${disabled?'':(`addToSlot('${p.id}')`)}">
+            ${badge}
           </button>
         </div>`
       })
