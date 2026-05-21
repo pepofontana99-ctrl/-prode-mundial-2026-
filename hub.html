@@ -78,6 +78,33 @@
   .btn-primary:hover{background:var(--verde-dark);}
   .btn-secondary{width:100%;background:none;color:var(--muted);font-size:13px;border:1px solid var(--border);border-radius:8px;padding:10px;cursor:pointer;transition:all .2s;margin-top:8px;font-family:'DM Sans',sans-serif;}
   .btn-secondary:hover{border-color:var(--muted);color:var(--texto);}
+
+  /* FANTASY TEAM */
+  .fantasy-wrap{background:var(--card);border:1px solid var(--border);border-radius:14px;overflow:hidden;}
+  .fantasy-header{display:flex;justify-content:space-between;align-items:center;padding:12px 1.25rem;border-bottom:1px solid var(--border);}
+  .fantasy-header h3{font-size:14px;font-weight:500;}
+  .fantasy-pts{font-family:'Bebas Neue',sans-serif;font-size:22px;color:var(--verde);}
+  .fantasy-zone{padding:10px 1.25rem;border-bottom:1px solid var(--border);}
+  .fantasy-zone:last-child{border-bottom:none;}
+  .zone-name{font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-bottom:8px;}
+  .zone-players-row{display:flex;gap:8px;flex-wrap:wrap;}
+  .player-chip{display:flex;align-items:center;gap:6px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:5px 10px;flex:1;min-width:120px;transition:border-color .15s;}
+  .player-chip:hover{border-color:rgba(0,200,83,.3);}
+  .chip-flag{width:20px;height:14px;border-radius:2px;object-fit:cover;flex-shrink:0;}
+  .chip-name{font-size:12px;font-weight:500;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .chip-nota{font-family:'Bebas Neue',sans-serif;font-size:16px;flex-shrink:0;}
+  .nota-great{color:var(--verde);}
+  .nota-good{color:#7ACC44;}
+  .nota-ok{color:var(--oro);}
+  .nota-bad{color:#ff9944;}
+  .nota-poor{color:#ff6b6b;}
+  .nota-none{color:var(--muted);}
+  .chip-sup{border-style:dashed;opacity:.7;}
+  .fantasy-empty{padding:2rem;text-align:center;color:var(--muted);font-size:13px;}
+  .fantasy-empty a{color:var(--verde);text-decoration:none;}
+  .fantasy-total{display:flex;justify-content:space-between;align-items:center;padding:10px 1.25rem;background:rgba(0,200,83,.04);border-top:1px solid rgba(0,200,83,.1);}
+  .fantasy-total span{font-size:12px;color:var(--muted);}
+  .fantasy-total strong{font-family:'Bebas Neue',sans-serif;font-size:20px;color:var(--verde);}
   .join-form{display:flex;gap:8px;margin-top:10px;}
   .join-input{flex:1;background:var(--bg3);border:1px solid var(--border);border-radius:8px;color:var(--texto);font-family:'DM Sans',sans-serif;font-size:13px;padding:9px 12px;outline:none;text-transform:uppercase;}
   .join-input:focus{border-color:var(--verde);}
@@ -141,6 +168,14 @@
       <div id="resultadosRecientes"><div class="skeleton" style="height:70px;margin-bottom:10px"></div><div class="skeleton" style="height:70px"></div></div>
     </div>
 
+    <!-- MI EQUIPO FANTASY -->
+    <div>
+      <div class="section-title">Mi equipo fantasy</div>
+      <div id="miEquipoFantasy">
+        <div class="skeleton" style="height:200px;border-radius:14px"></div>
+      </div>
+    </div>
+
   </div>
 
   <!-- COLUMNA DERECHA -->
@@ -194,7 +229,114 @@
       cargarRanking(),
       cargarPartidos(),
       cargarMiGrupo(),
+      cargarMiEquipoHub(),
     ])
+  }
+
+  async function cargarMiEquipoHub() {
+    const el = document.getElementById('miEquipoFantasy')
+
+    // Traer equipo
+    const { data: eq } = await db
+      .from('equipos_fantasy')
+      .select('arquero_id,def1_id,def2_id,def3_id,def4_id,med1_id,med2_id,med3_id,del1_id,del2_id,del3_id,suplente_def_id,suplente_med_id,suplente_del_id')
+      .eq('usuario_id', currentUser.id)
+      .single()
+
+    if (!eq) {
+      el.innerHTML = `<div class="fantasy-wrap"><div class="fantasy-empty">No armaste tu equipo todavía.<br><a href="equipo.html">Armarlo ahora →</a></div></div>`
+      return
+    }
+
+    // Todos los IDs de jugadores
+    const allIds = [eq.arquero_id,eq.def1_id,eq.def2_id,eq.def3_id,eq.def4_id,eq.med1_id,eq.med2_id,eq.med3_id,eq.del1_id,eq.del2_id,eq.del3_id,eq.suplente_def_id,eq.suplente_med_id,eq.suplente_del_id].filter(Boolean)
+
+    // Traer jugadores
+    const { data: jugadores } = await db
+      .from('jugadores')
+      .select('id,nombre,posicion,pais:pais_id(nombre,url_bandera)')
+      .in('id', allIds)
+
+    const jugMap = {}
+    jugadores?.forEach(j => jugMap[j.id] = j)
+
+    // Traer puntos del torneo por jugador
+    const { data: puntos } = await db
+      .from('puntos_fantasy')
+      .select('jugador_id,pts_total,pts_nota,pts_bonus')
+      .eq('usuario_id', currentUser.id)
+      .in('jugador_id', allIds)
+
+    // Agrupar puntos por jugador
+    const ptsMap = {}
+    puntos?.forEach(p => {
+      if (!ptsMap[p.jugador_id]) ptsMap[p.jugador_id] = 0
+      ptsMap[p.jugador_id] += parseFloat(p.pts_total || 0)
+    })
+
+    // Traer última nota de cada jugador
+    const { data: ultRend } = await db
+      .from('rendimiento_jugadores')
+      .select('jugador_id,nota_sofascore,partido_id')
+      .in('jugador_id', allIds)
+      .order('cargado_en', { ascending: false })
+
+    const notaMap = {}
+    ultRend?.forEach(r => { if (!notaMap[r.jugador_id]) notaMap[r.jugador_id] = r.nota_sofascore })
+
+    function notaClass(n) {
+      if (!n) return 'nota-none'
+      if (n >= 9) return 'nota-great'
+      if (n >= 7.5) return 'nota-good'
+      if (n >= 6.5) return 'nota-ok'
+      if (n >= 5) return 'nota-bad'
+      return 'nota-poor'
+    }
+
+    function renderChip(id, esSuplente = false) {
+      const j = jugMap[id]
+      if (!j) return ''
+      const nota = notaMap[id]
+      const pts = ptsMap[id] || 0
+      const flag = j.pais?.url_bandera ? `<img class="chip-flag" src="${j.pais.url_bandera}">` : ''
+      const notaStr = nota ? nota.toFixed(1) : '–'
+      return `<div class="player-chip ${esSuplente ? 'chip-sup' : ''}">
+        ${flag}
+        <span class="chip-name">${j.nombre}</span>
+        <span class="chip-nota ${notaClass(nota)}">${notaStr}</span>
+      </div>`
+    }
+
+    const totalPts = Object.values(ptsMap).reduce((a,b) => a+b, 0)
+
+    const zonas = [
+      { label: 'Delanteros', ids: [eq.del1_id, eq.del2_id, eq.del3_id] },
+      { label: 'Mediocampistas', ids: [eq.med1_id, eq.med2_id, eq.med3_id] },
+      { label: 'Defensores', ids: [eq.def1_id, eq.def2_id, eq.def3_id, eq.def4_id] },
+      { label: 'Arquero', ids: [eq.arquero_id] },
+      { label: 'Suplentes', ids: [eq.suplente_def_id, eq.suplente_med_id, eq.suplente_del_id], sup: true },
+    ]
+
+    const zonaHtml = zonas.map(z => `
+      <div class="fantasy-zone">
+        <div class="zone-name">${z.label}</div>
+        <div class="zone-players-row">
+          ${z.ids.filter(Boolean).map(id => renderChip(id, z.sup)).join('')}
+        </div>
+      </div>`).join('')
+
+    el.innerHTML = `
+      <div class="fantasy-wrap">
+        <div class="fantasy-header">
+          <h3>Mi equipo fantasy</h3>
+          <div class="fantasy-pts">${totalPts.toFixed(1)} pts</div>
+        </div>
+        ${zonaHtml}
+        <div class="fantasy-total">
+          <span>La nota es del último partido jugado</span>
+          <strong>${totalPts.toFixed(1)} pts acumulados</strong>
+        </div>
+      </div>`
   }
 
   async function cargarRanking() {
