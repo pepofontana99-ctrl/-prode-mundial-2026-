@@ -107,6 +107,7 @@
     <div class="nav-item active" onclick="showSection('dashboard',this)"><span>▦</span> Dashboard</div>
     <div class="nav-item" onclick="showSection('partidos',this)"><span>⚽</span> Partidos</div>
     <div class="nav-item" onclick="showSection('rendimiento',this)"><span>📊</span> Rendimiento <span class="nav-badge" id="pendBadge">0</span></div>
+    <div class="nav-item" onclick="showSection('jugadores',this)"><span>👤</span> Jugadores</div>
     <div class="nav-label">Torneo</div>
     <div class="nav-item" onclick="showSection('eliminatorias',this)"><span>🗓</span> Eliminatorias</div>
     <div class="nav-item" onclick="showSection('ganadores',this)"><span>🏆</span> Ganadores</div>
@@ -193,6 +194,33 @@
       </div>
     </div>
 
+    <!-- JUGADORES -->
+    <div id="sec-jugadores" style="display:none">
+      <div class="table-wrap">
+        <div class="table-header">
+          <h3>Jugadores · <span id="jugCount">0</span> cargados</h3>
+          <div style="display:flex;gap:8px;align-items:center">
+            <select class="form-select" id="filtroSeleccion" style="width:180px;font-size:12px;padding:6px 10px;" onchange="filtrarJugadores()">
+              <option value="">Todas las selecciones</option>
+            </select>
+            <select class="form-select" id="filtroPosicion" style="width:140px;font-size:12px;padding:6px 10px;" onchange="filtrarJugadores()">
+              <option value="">Todas las posiciones</option>
+              <option value="arquero">Arquero</option>
+              <option value="defensor">Defensor</option>
+              <option value="mediocampista">Mediocampista</option>
+              <option value="delantero">Delantero</option>
+            </select>
+            <input type="text" placeholder="Buscar jugador..." id="jugSearch" oninput="filtrarJugadores()" style="background:var(--bg3);border:1px solid var(--border);border-radius:7px;color:var(--texto);font-size:12px;padding:6px 12px;outline:none;width:160px;">
+            <button class="btn btn-primary btn-sm" onclick="openModalJugador()">+ Agregar jugador</button>
+          </div>
+        </div>
+        <table>
+          <thead><tr><th>Jugador</th><th>Selección</th><th>Posición</th><th>Estado</th><th>Acciones</th></tr></thead>
+          <tbody id="jugadoresTable"><tr><td colspan="5" class="empty-state">Cargando...</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+
     <!-- ELIMINATORIAS -->
     <div id="sec-eliminatorias" style="display:none">
       <div class="table-wrap">
@@ -257,6 +285,37 @@
       </div>
     </div>
 
+  </div>
+</div>
+
+<!-- MODAL JUGADOR -->
+<div class="modal-overlay" id="modalJugador" onclick="maybeClose(event,'modalJugador')">
+  <div class="modal-box">
+    <h3 id="modalJugadorTitle">Agregar jugador</h3>
+    <input type="hidden" id="mjId">
+    <div class="form-group">
+      <label class="form-label">Nombre completo</label>
+      <input type="text" class="form-input" id="mjNombre" placeholder="ej: Lionel Messi">
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Selección</label>
+        <select class="form-select" id="mjPais"></select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Posición</label>
+        <select class="form-select" id="mjPosicion">
+          <option value="arquero">Arquero</option>
+          <option value="defensor">Defensor</option>
+          <option value="mediocampista">Mediocampista</option>
+          <option value="delantero">Delantero</option>
+        </select>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="closeModal('modalJugador')">Cancelar</button>
+      <button class="btn btn-primary" onclick="guardarJugador()">Guardar</button>
+    </div>
   </div>
 </div>
 
@@ -776,6 +835,7 @@ function showSection(sec, el) {
 
   if (sec === 'partidos') renderPartidosTable()
   if (sec === 'rendimiento') poblarSelectRendimiento()
+  if (sec === 'jugadores') cargarJugadoresAdmin()
   if (sec === 'usuarios') cargarUsuarios()
   if (sec === 'ganadores') cargarGanadores()
   if (sec === 'config') cargarUsuarios()
@@ -785,6 +845,106 @@ function closeModal(id) { document.getElementById(id).classList.remove('show') }
 function maybeClose(e, id) { if (e.target === document.getElementById(id)) closeModal(id) }
 
 async function logout() { await db.auth.signOut(); window.location.href = 'login.html' }
+
+// ── JUGADORES ──
+let todosJugadores = []
+
+async function cargarJugadoresAdmin() {
+  const { data } = await db
+    .from('jugadores')
+    .select('id,nombre,posicion,activo,pais:pais_id(id,nombre,url_bandera,grupo)')
+    .order('nombre')
+  todosJugadores = data || []
+  allJugadores = todosJugadores
+  document.getElementById('jugCount').textContent = todosJugadores.length
+
+  const uniquePaises = [...new Map(todosJugadores.map(j => [j.pais?.id, j.pais])).values()].filter(Boolean).sort((a,b)=>(a.grupo||'').localeCompare(b.grupo||'')||a.nombre.localeCompare(b.nombre))
+  const filtroSel = document.getElementById('filtroSeleccion')
+  if (filtroSel) {
+    filtroSel.innerHTML = '<option value="">Todas las selecciones</option>' +
+      uniquePaises.map(p => `<option value="${p.id}">${p.nombre} (Grupo ${p.grupo})</option>`).join('')
+  }
+  renderJugadoresTable(todosJugadores)
+}
+
+function filtrarJugadores() {
+  const q = document.getElementById('jugSearch').value.toLowerCase()
+  const selId = document.getElementById('filtroSeleccion').value
+  const pos = document.getElementById('filtroPosicion').value
+  const filtrados = todosJugadores.filter(j =>
+    (!q || j.nombre.toLowerCase().includes(q)) &&
+    (!selId || j.pais?.id === selId) &&
+    (!pos || j.posicion === pos)
+  )
+  renderJugadoresTable(filtrados)
+}
+
+function renderJugadoresTable(jugadores) {
+  const posLabel = {arquero:'Arquero',defensor:'Defensor',mediocampista:'Mediocampista',delantero:'Delantero'}
+  const posColor = {arquero:'var(--oro)',defensor:'var(--verde)',mediocampista:'var(--azul)',delantero:'#D85A30'}
+  const rows = jugadores.map(j => {
+    const flag = j.pais?.url_bandera ? `<img class="flag-img" src="${j.pais.url_bandera}">` : ''
+    return `<tr>
+      <td><b>${j.nombre}</b></td>
+      <td>${flag}${j.pais?.nombre||'–'} <span style="color:var(--muted);font-size:11px">(Grupo ${j.pais?.grupo||'?'})</span></td>
+      <td><span style="color:${posColor[j.posicion]};font-size:12px;font-weight:500">${posLabel[j.posicion]||j.posicion}</span></td>
+      <td>${j.activo?'<span class="pill pill-open">Activo</span>':'<span class="pill pill-pending">Inactivo</span>'}</td>
+      <td>
+        <div style="display:flex;gap:6px;">
+          <button class="btn btn-outline btn-sm" onclick="editarJugador('${j.id}')">Editar</button>
+          <button class="btn btn-sm" style="background:rgba(255,68,68,.15);color:var(--rojo);border:1px solid rgba(255,68,68,.3)" onclick="toggleActivo('${j.id}',${j.activo})">${j.activo?'Desactivar':'Activar'}</button>
+        </div>
+      </td>
+    </tr>`
+  }).join('')
+  document.getElementById('jugadoresTable').innerHTML = rows || '<tr><td colspan="5" class="empty-state">No se encontraron jugadores</td></tr>'
+}
+
+function openModalJugador() {
+  document.getElementById('modalJugadorTitle').textContent = 'Agregar jugador'
+  document.getElementById('mjId').value = ''
+  document.getElementById('mjNombre').value = ''
+  document.getElementById('mjPosicion').value = 'delantero'
+  const opts = allPaises.map(p => `<option value="${p.id}">${p.nombre} (Grupo ${p.grupo})</option>`).join('')
+  document.getElementById('mjPais').innerHTML = opts
+  document.getElementById('modalJugador').classList.add('show')
+  setTimeout(() => document.getElementById('mjNombre').focus(), 100)
+}
+
+function editarJugador(id) {
+  const j = todosJugadores.find(x => x.id === id)
+  if (!j) return
+  document.getElementById('modalJugadorTitle').textContent = 'Editar jugador'
+  document.getElementById('mjId').value = j.id
+  document.getElementById('mjNombre').value = j.nombre
+  document.getElementById('mjPosicion').value = j.posicion
+  const opts = allPaises.map(p => `<option value="${p.id}" ${p.id===j.pais?.id?'selected':''}>${p.nombre} (Grupo ${p.grupo})</option>`).join('')
+  document.getElementById('mjPais').innerHTML = opts
+  document.getElementById('modalJugador').classList.add('show')
+}
+
+async function guardarJugador() {
+  const nombre = document.getElementById('mjNombre').value.trim()
+  const paisId = document.getElementById('mjPais').value
+  const posicion = document.getElementById('mjPosicion').value
+  const id = document.getElementById('mjId').value
+  if (!nombre || !paisId) { showToast('Completá nombre y selección','warn'); return }
+  if (id) {
+    await db.from('jugadores').update({ nombre, pais_id: paisId, posicion }).eq('id', id)
+    showToast('Jugador actualizado')
+  } else {
+    await db.from('jugadores').insert({ nombre, pais_id: paisId, posicion, activo: true })
+    showToast('Jugador agregado')
+  }
+  closeModal('modalJugador')
+  await cargarJugadoresAdmin()
+}
+
+async function toggleActivo(id, activo) {
+  await db.from('jugadores').update({ activo: !activo }).eq('id', id)
+  await cargarJugadoresAdmin()
+  showToast(activo ? 'Jugador desactivado' : 'Jugador activado')
+}
 
 function showToast(msg, type) {
   const t = document.getElementById('toast')
