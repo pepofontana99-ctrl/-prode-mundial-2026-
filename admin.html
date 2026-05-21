@@ -893,6 +893,7 @@ function renderJugadoresTable(jugadores) {
         <div style="display:flex;gap:6px;">
           <button class="btn btn-outline btn-sm" onclick="editarJugador('${j.id}')">Editar</button>
           <button class="btn btn-sm" style="background:rgba(255,68,68,.15);color:var(--rojo);border:1px solid rgba(255,68,68,.3)" onclick="toggleActivo('${j.id}',${j.activo})">${j.activo?'Desactivar':'Activar'}</button>
+          <button class="btn btn-sm" style="background:rgba(255,68,68,.25);color:var(--rojo);border:1px solid rgba(255,68,68,.5)" onclick="borrarJugador('${j.id}','${j.nombre.replace(/'/g,"\\'") }')">🗑 Borrar</button>
         </div>
       </td>
     </tr>`
@@ -944,6 +945,14 @@ async function toggleActivo(id, activo) {
   await db.from('jugadores').update({ activo: !activo }).eq('id', id)
   await cargarJugadoresAdmin()
   showToast(activo ? 'Jugador desactivado' : 'Jugador activado')
+}
+
+async function borrarJugador(id, nombre) {
+  if (!confirm(`¿Borrar a ${nombre}? Esta acción no se puede deshacer.`)) return
+  const { error } = await db.from('jugadores').delete().eq('id', id)
+  if (error) { showToast('No se puede borrar — el jugador tiene datos asociados', 'error'); return }
+  await cargarJugadoresAdmin()
+  showToast(`${nombre} eliminado`)
 }
 
 function showToast(msg, type) {
