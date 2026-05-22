@@ -58,6 +58,22 @@
   .ranking-card{background:var(--card);border:1px solid var(--border);border-radius:16px;overflow:hidden;}
   .ranking-header{padding:1rem 1.25rem;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;}
   .ranking-header h3{font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:1px;}
+  .rtab{font-size:11px;padding:3px 10px;border-radius:4px;cursor:pointer;color:var(--muted);transition:all .15s;border:none;background:none;font-family:'DM Sans',sans-serif;}
+  .rtab.active{background:rgba(0,200,83,.15);color:var(--verde);}
+
+  /* TOP JUGADORES */
+  .tp-row{display:flex;align-items:center;gap:10px;padding:10px 1.25rem;border-bottom:1px solid var(--border);transition:background .15s;}
+  .tp-row:last-child{border-bottom:none;}
+  .tp-row:hover{background:rgba(255,255,255,.02);}
+  .tp-pos{font-family:'Bebas Neue',sans-serif;font-size:16px;color:var(--muted);min-width:20px;}
+  .tp-pos.gold{color:var(--oro);}
+  .tp-flag{width:22px;height:15px;border-radius:2px;object-fit:cover;flex-shrink:0;}
+  .tp-info{flex:1;min-width:0;}
+  .tp-name{font-size:13px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .tp-meta{font-size:11px;color:var(--muted);margin-top:1px;}
+  .tp-pts{text-align:right;flex-shrink:0;}
+  .tp-pts-val{font-family:'Bebas Neue',sans-serif;font-size:22px;color:var(--verde);}
+  .tp-pts-lbl{font-size:10px;color:var(--muted);text-transform:uppercase;}
   .ranking-row{display:flex;align-items:center;gap:10px;padding:10px 1.25rem;border-bottom:1px solid var(--border);transition:background .15s;}
   .ranking-row:last-child{border-bottom:none;}
   .ranking-row:hover{background:rgba(255,255,255,0.02);}
@@ -208,6 +224,26 @@
       <div id="rankingList"><div style="padding:1rem"><div class="skeleton" style="margin-bottom:8px"></div><div class="skeleton" style="margin-bottom:8px"></div><div class="skeleton"></div></div></div>
     </div>
 
+    <!-- TOP JUGADORES -->
+    <div class="ranking-card">
+      <div class="ranking-header">
+        <h3>Top jugadores</h3>
+        <div style="display:flex;gap:4px;">
+          <button class="rtab active" id="tab-torneo" onclick="setTopTab('torneo')">Torneo</button>
+          <button class="rtab" id="tab-fecha" onclick="setTopTab('fecha')">Por fecha</button>
+        </div>
+      </div>
+      <!-- Selector de fecha (oculto por defecto) -->
+      <div id="fechaSelector" style="display:none;padding:8px 1.25rem;border-bottom:1px solid var(--border);">
+        <select id="fechaSelect" class="join-input" style="width:100%;text-transform:none;font-family:'DM Sans',sans-serif;font-size:12px;padding:6px 10px;border-radius:6px;" onchange="cargarTopJugadores()">
+          <option value="">Elegir fecha...</option>
+        </select>
+      </div>
+      <div id="topJugadoresList">
+        <div style="padding:1rem"><div class="skeleton" style="margin-bottom:8px"></div><div class="skeleton" style="margin-bottom:8px"></div><div class="skeleton"></div></div>
+      </div>
+    </div>
+
     <!-- GRUPO PRIVADO -->
     <div class="group-card">
       <div class="section-title" style="margin-bottom:.75rem">Mi grupo privado</div>
@@ -258,6 +294,7 @@
       cargarMiGrupo(),
       cargarMiEquipoHub(),
       cargarTablaGrupos(),
+      cargarTopJugadores(),
     ])
   }
 
@@ -520,6 +557,105 @@
     if (error) { alert('Error al crear grupo'); return }
     await db.from('miembros_grupo').insert({ grupo_id: data.id, usuario_id: currentUser.id })
     cargarMiGrupo()
+  }
+
+  let topTab = 'torneo'
+  let partidosFechas = []
+
+  function setTopTab(tab) {
+    topTab = tab
+    document.getElementById('tab-torneo').classList.toggle('active', tab === 'torneo')
+    document.getElementById('tab-fecha').classList.toggle('active', tab === 'fecha')
+    document.getElementById('fechaSelector').style.display = tab === 'fecha' ? 'block' : 'none'
+    cargarTopJugadores()
+  }
+
+  async function cargarTopJugadores() {
+    const el = document.getElementById('topJugadoresList')
+    el.innerHTML = '<div style="padding:1rem"><div class="skeleton" style="margin-bottom:8px"></div><div class="skeleton" style="margin-bottom:8px"></div><div class="skeleton"></div></div>'
+
+    let data = []
+
+    if (topTab === 'torneo') {
+      // Puntos acumulados por jugador en todo el torneo
+      const { data: pts } = await db
+        .from('puntos_fantasy')
+        .select('jugador_id,pts_total,jugador:jugador_id(nombre,posicion,pais:pais_id(nombre,url_bandera))')
+
+      if (!pts || pts.length === 0) {
+        el.innerHTML = '<div style="padding:1.5rem;text-align:center;color:var(--muted);font-size:13px">Aún no hay puntos cargados</div>'
+        return
+      }
+
+      // Sumar por jugador
+      const mapa = {}
+      pts.forEach(p => {
+        if (!mapa[p.jugador_id]) mapa[p.jugador_id] = { jugador: p.jugador, total: 0 }
+        mapa[p.jugador_id].total += parseFloat(p.pts_total || 0)
+      })
+      data = Object.values(mapa).sort((a,b) => b.total - a.total).slice(0, 10)
+
+    } else {
+      // Por fecha — traer partidos jugados
+      if (partidosFechas.length === 0) {
+        const { data: ps } = await db
+          .from('partidos')
+          .select('id,ronda,fecha_hora,pais_local:pais_local_id(nombre),pais_visitante:pais_visitante_id(nombre)')
+          .eq('jugado', true)
+          .order('fecha_hora')
+        partidosFechas = ps || []
+
+        const sel = document.getElementById('fechaSelect')
+        sel.innerHTML = '<option value="">Elegir partido...</option>' +
+          partidosFechas.map(p => `<option value="${p.id}">${p.pais_local?.nombre} vs ${p.pais_visitante?.nombre} · ${p.ronda}</option>`).join('')
+      }
+
+      const partidoId = document.getElementById('fechaSelect').value
+      if (!partidoId) {
+        el.innerHTML = '<div style="padding:1.5rem;text-align:center;color:var(--muted);font-size:13px">Elegí un partido arriba</div>'
+        return
+      }
+
+      const { data: pts } = await db
+        .from('puntos_fantasy')
+        .select('jugador_id,pts_total,jugador:jugador_id(nombre,posicion,pais:pais_id(nombre,url_bandera))')
+        .eq('partido_id', partidoId)
+
+      if (!pts || pts.length === 0) {
+        el.innerHTML = '<div style="padding:1.5rem;text-align:center;color:var(--muted);font-size:13px">No hay puntos para este partido</div>'
+        return
+      }
+
+      const mapa = {}
+      pts.forEach(p => {
+        if (!mapa[p.jugador_id]) mapa[p.jugador_id] = { jugador: p.jugador, total: 0 }
+        mapa[p.jugador_id].total += parseFloat(p.pts_total || 0)
+      })
+      data = Object.values(mapa).sort((a,b) => b.total - a.total).slice(0, 10)
+    }
+
+    const posLabel = { arquero:'Arq', defensor:'Def', mediocampista:'Med', delantero:'Del' }
+    const medals = ['🥇','🥈','🥉']
+
+    const html = data.map((d, i) => {
+      const j = d.jugador
+      const flag = j?.pais?.url_bandera ? `<img class="tp-flag" src="${j.pais.url_bandera}">` : ''
+      const posClass = i < 3 ? 'gold' : ''
+      return `<div class="tp-row">
+        <div class="tp-pos ${posClass}">${medals[i] || (i+1)}</div>
+        ${flag}
+        <div class="tp-info">
+          <div class="tp-name">${j?.nombre || '–'}</div>
+          <div class="tp-meta">${j?.pais?.nombre || ''} · ${posLabel[j?.posicion] || ''}</div>
+        </div>
+        <div class="tp-pts">
+          <div class="tp-pts-val">${d.total % 1 === 0 ? d.total : d.total.toFixed(1)}</div>
+          <div class="tp-pts-lbl">pts</div>
+        </div>
+      </div>`
+    }).join('')
+
+    el.innerHTML = html
   }
 
   async function cargarTablaGrupos() {
