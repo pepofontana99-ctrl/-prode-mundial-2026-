@@ -38,7 +38,23 @@
   .match-block{background:var(--bg2);border:1px solid var(--border);border-radius:14px;margin-bottom:10px;overflow:hidden;transition:border-color .2s;}
   .match-block:hover{border-color:rgba(0,200,83,.2);}
   .match-block.filled{border-color:rgba(0,200,83,.18);}
-  .match-block.locked{opacity:.5;pointer-events:none;}
+  .match-block.locked{opacity:.7;pointer-events:none;}
+
+  /* PREDICCIONES POPULARES */
+  .popular-bar{padding:8px 1.25rem 10px;border-top:1px solid var(--border);background:rgba(255,255,255,.02);}
+  .popular-title{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;}
+  .popular-bars{display:flex;gap:6px;align-items:stretch;}
+  .pop-option{flex:1;display:flex;flex-direction:column;gap:3px;}
+  .pop-label{font-size:10px;color:var(--muted);text-align:center;}
+  .pop-track{height:6px;background:rgba(255,255,255,.06);border-radius:3px;overflow:hidden;}
+  .pop-fill-local{height:100%;background:var(--verde);border-radius:3px;transition:width .5s ease;}
+  .pop-fill-empate{height:100%;background:var(--oro);border-radius:3px;transition:width .5s ease;}
+  .pop-fill-visitante{height:100%;background:var(--azul);border-radius:3px;transition:width .5s ease;}
+  .pop-pct{font-family:'Bebas Neue',sans-serif;font-size:14px;text-align:center;}
+  .pop-pct.local{color:var(--verde);}
+  .pop-pct.empate{color:var(--oro);}
+  .pop-pct.visitante{color:var(--azul);}
+  .pop-top{font-size:10px;color:var(--muted);text-align:center;margin-top:2px;}
   .match-inner{display:flex;align-items:center;padding:1rem 1.25rem;gap:1rem;}
   .team{display:flex;align-items:center;gap:10px;flex:1;}
   .team.right{flex-direction:row-reverse;}
@@ -175,8 +191,31 @@
     })
 
     filledCount = Object.keys(misPreds).length
+
+    // Predicciones populares — solo de partidos cerrados
+    const cerrados = partidos.filter(p => p.cerrado || p.jugado).map(p => p.id)
+    if (cerrados.length > 0) {
+      const { data: todas } = await db
+        .from('predicciones_partidos')
+        .select('partido_id,goles_local_pred,goles_visitante_pred')
+        .in('partido_id', cerrados)
+      popularMap = {}
+      ;(todas || []).forEach(p => {
+        if (!popularMap[p.partido_id]) popularMap[p.partido_id] = { local:0, empate:0, visitante:0, total:0, resultados:{} }
+        const m = popularMap[p.partido_id]
+        m.total++
+        if (p.goles_local_pred > p.goles_visitante_pred) m.local++
+        else if (p.goles_local_pred === p.goles_visitante_pred) m.empate++
+        else m.visitante++
+        const key = `${p.goles_local_pred}-${p.goles_visitante_pred}`
+        m.resultados[key] = (m.resultados[key] || 0) + 1
+      })
+    }
+
     renderTodo()
   }
+
+  let popularMap = {}
 
   function renderTodo() {
     // Agrupar por grupo
@@ -239,6 +278,42 @@
     const statusColor = filled ? 'var(--verde)' : 'var(--muted)'
     const statusText = locked ? (p.jugado ? `${p.goles_local} – ${p.goles_visitante} (final)` : 'Cerrado') : (filled ? 'Guardado' : 'Sin predicción')
 
+    // Predicciones populares
+    let popularHTML = ''
+    if (locked && popularMap[p.id] && popularMap[p.id].total > 0) {
+      const m = popularMap[p.id]
+      const pctL = Math.round((m.local / m.total) * 100)
+      const pctE = Math.round((m.empate / m.total) * 100)
+      const pctV = Math.round((m.visitante / m.total) * 100)
+      const topRes = Object.entries(m.resultados).sort((a,b) => b[1]-a[1])[0]
+      const topPct = topRes ? Math.round((topRes[1]/m.total)*100) : 0
+      const topStr = topRes ? `${topRes[0]} · elegido por el ${topPct}%` : ''
+      const nloc = p.pais_local?.nombre?.split(' ')[0] || 'Local'
+      const nvis = p.pais_visitante?.nombre?.split(' ')[0] || 'Visitante'
+      popularHTML = `
+        <div class="popular-bar">
+          <div class="popular-title">¿Qué predijo la gente? · ${m.total} predicciones</div>
+          <div class="popular-bars">
+            <div class="pop-option">
+              <div class="pop-pct local">${pctL}%</div>
+              <div class="pop-track"><div class="pop-fill-local" style="width:${pctL}%"></div></div>
+              <div class="pop-label">${nloc}</div>
+            </div>
+            <div class="pop-option">
+              <div class="pop-pct empate">${pctE}%</div>
+              <div class="pop-track"><div class="pop-fill-empate" style="width:${pctE}%"></div></div>
+              <div class="pop-label">Empate</div>
+            </div>
+            <div class="pop-option">
+              <div class="pop-pct visitante">${pctV}%</div>
+              <div class="pop-track"><div class="pop-fill-visitante" style="width:${pctV}%"></div></div>
+              <div class="pop-label">${nvis}</div>
+            </div>
+          </div>
+          ${topStr ? `<div style="font-size:10px;color:var(--muted);margin-top:6px;text-align:center">Resultado más predicho: <b style="color:var(--texto)">${topStr}</b></div>` : ''}
+        </div>`
+    }
+
     return `
       <div class="match-block ${filled?'filled':''} ${locked?'locked':''}" id="mb-${p.id}">
         <div class="match-inner">
@@ -270,6 +345,7 @@
             <span style="color:${statusColor}" id="status-${p.id}">${statusText}</span>
           </div>
         </div>
+        ${popularHTML}
       </div>`
   }
 
