@@ -109,6 +109,7 @@
     <div class="nav-item" onclick="showSection('rendimiento',this)"><span>📊</span> Rendimiento <span class="nav-badge" id="pendBadge">0</span></div>
     <div class="nav-item" onclick="showSection('jugadores',this)"><span>👤</span> Jugadores</div>
     <div class="nav-label">Torneo</div>
+    <div class="nav-item" onclick="showSection('tabla',this)"><span>📋</span> Tabla de grupos</div>
     <div class="nav-item" onclick="showSection('eliminatorias',this)"><span>🗓</span> Eliminatorias</div>
     <div class="nav-item" onclick="showSection('ganadores',this)"><span>🏆</span> Ganadores</div>
     <div class="nav-item" onclick="showSection('usuarios',this)"><span>👥</span> Usuarios</div>
@@ -217,6 +218,25 @@
         <table>
           <thead><tr><th>Jugador</th><th>Selección</th><th>Posición</th><th>Estado</th><th>Acciones</th></tr></thead>
           <tbody id="jugadoresTable"><tr><td colspan="5" class="empty-state">Cargando...</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- TABLA GRUPOS -->
+    <div id="sec-tabla" style="display:none">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
+        <div style="font-size:13px;color:var(--muted)">Editá los puntos después de cada partido. Los cambios se reflejan inmediatamente en el hub.</div>
+        <div style="display:flex;gap:8px;">
+          <select class="form-select" id="filtroGrupoTabla" style="width:140px;font-size:12px;padding:6px 10px;" onchange="renderTablaAdmin()">
+            <option value="">Todos los grupos</option>
+          </select>
+          <button class="btn btn-primary btn-sm" onclick="guardarTabla()">Guardar cambios</button>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Selección</th><th>Grupo</th><th>PJ</th><th>PG</th><th>PE</th><th>PP</th><th>GF</th><th>GC</th><th>Pts</th></tr></thead>
+          <tbody id="tablaAdminBody"><tr><td colspan="9" class="empty-state">Cargando...</td></tr></tbody>
         </table>
       </div>
     </div>
@@ -873,6 +893,7 @@ function showSection(sec, el) {
   if (sec === 'partidos') renderPartidosTable()
   if (sec === 'rendimiento') poblarSelectRendimiento()
   if (sec === 'jugadores') cargarJugadoresAdmin()
+  if (sec === 'tabla') cargarTablaAdmin()
   if (sec === 'usuarios') cargarUsuarios()
   if (sec === 'ganadores') cargarGanadores()
   if (sec === 'config') cargarUsuarios()
@@ -880,6 +901,65 @@ function showSection(sec, el) {
 
 function closeModal(id) { document.getElementById(id).classList.remove('show') }
 function maybeClose(e, id) { if (e.target === document.getElementById(id)) closeModal(id) }
+
+// ── TABLA DE GRUPOS ──
+let tablaData = []
+
+async function cargarTablaAdmin() {
+  const { data } = await db
+    .from('tabla_grupos')
+    .select('id,grupo,puntos,pj,pg,pe,pp,gf,gc,pais:pais_id(nombre,url_bandera)')
+    .order('grupo').order('puntos', { ascending: false })
+  tablaData = data || []
+
+  // Poblar filtro de grupos
+  const grupos = [...new Set(tablaData.map(r => r.grupo))].sort()
+  const sel = document.getElementById('filtroGrupoTabla')
+  if (sel) sel.innerHTML = '<option value="">Todos los grupos</option>' + grupos.map(g => `<option value="${g}">Grupo ${g}</option>`).join('')
+
+  renderTablaAdmin()
+}
+
+function renderTablaAdmin() {
+  const filtro = document.getElementById('filtroGrupoTabla')?.value || ''
+  const filtrado = filtro ? tablaData.filter(r => r.grupo === filtro) : tablaData
+
+  const rows = filtrado.map(r => {
+    const flag = r.pais?.url_bandera ? `<img class="flag-img" src="${r.pais.url_bandera}">` : ''
+    const inp = (field, val) => `<input class="num-inp" type="number" min="0" max="99" value="${val}" id="tg-${field}-${r.id}" style="width:48px">`
+    return `<tr>
+      <td>${flag}${r.pais?.nombre || '–'}</td>
+      <td style="color:var(--verde);font-weight:500">Grupo ${r.grupo}</td>
+      <td>${inp('pj', r.pj)}</td>
+      <td>${inp('pg', r.pg)}</td>
+      <td>${inp('pe', r.pe)}</td>
+      <td>${inp('pp', r.pp)}</td>
+      <td>${inp('gf', r.gf)}</td>
+      <td>${inp('gc', r.gc)}</td>
+      <td>${inp('puntos', r.puntos)}</td>
+    </tr>`
+  }).join('')
+
+  document.getElementById('tablaAdminBody').innerHTML = rows || '<tr><td colspan="9" class="empty-state">No hay datos</td></tr>'
+}
+
+async function guardarTabla() {
+  const filtro = document.getElementById('filtroGrupoTabla')?.value || ''
+  const filtrado = filtro ? tablaData.filter(r => r.grupo === filtro) : tablaData
+
+  let ok = 0
+  for (const r of filtrado) {
+    const get = field => parseInt(document.getElementById(`tg-${field}-${r.id}`)?.value) || 0
+    await db.from('tabla_grupos').update({
+      pj: get('pj'), pg: get('pg'), pe: get('pe'), pp: get('pp'),
+      gf: get('gf'), gc: get('gc'), puntos: get('puntos'),
+      actualizado: new Date().toISOString()
+    }).eq('id', r.id)
+    ok++
+  }
+  showToast(`${ok} selecciones actualizadas`)
+  await cargarTablaAdmin()
+}
 
 async function logout() { await db.auth.signOut(); window.location.href = 'login.html' }
 
