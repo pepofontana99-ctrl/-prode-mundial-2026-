@@ -61,7 +61,7 @@
   .score-inp:focus{border-color:var(--verde);}
   .score-sep{font-family:'Bebas Neue',sans-serif;color:var(--muted);font-size:18px;}
   .rend-panel{background:var(--bg2);border:1px solid var(--border);border-radius:14px;overflow:hidden;margin-bottom:1.5rem;}
-  .rend-row{display:grid;grid-template-columns:30px 1fr 80px 55px 55px 55px 55px 70px;align-items:center;gap:8px;padding:9px 16px;border-bottom:1px solid var(--border);font-size:13px;}
+  .rend-row{display:grid;grid-template-columns:30px 1fr 80px 55px 55px 55px 55px 45px 45px 70px;align-items:center;gap:8px;padding:9px 16px;border-bottom:1px solid var(--border);font-size:13px;}
   .rend-row:last-child{border-bottom:none;}
   .rend-row:hover{background:rgba(255,255,255,.02);}
   .rend-header{background:rgba(255,255,255,.02);font-size:11px;color:var(--muted);font-weight:500;text-transform:uppercase;letter-spacing:.5px;}
@@ -517,20 +517,22 @@ function renderPartidosTable() {
     if (p.jugado) {
       estadoPill = `<span class="pill pill-played"><span class="pill-dot"></span>Jugado</span>`
       resultado = `<b>${p.goles_local} – ${p.goles_visitante}</b>`
-      acciones = `<button class="btn btn-blue btn-sm" onclick="irARendimiento('${p.id}')">Cargar rendimiento</button>`
-    } else if (p.cerrado) {
-      estadoPill = `<span class="pill pill-locked"><span class="pill-dot"></span>Cerrado</span>`
+      acciones = `<div style="display:flex;gap:6px;">
+        <button class="btn btn-blue btn-sm" onclick="irARendimiento('${p.id}')">Cargar rendimiento</button>
+        <button class="btn btn-sm" style="background:rgba(255,68,68,.15);color:var(--rojo);border:1px solid rgba(255,68,68,.3)" onclick="borrarPartido('${p.id}')">🗑</button>
+      </div>`
+    } else {
+      estadoPill = p.cerrado
+        ? `<span class="pill pill-locked"><span class="pill-dot"></span>Cerrado</span>`
+        : `<span class="pill pill-open"><span class="pill-dot"></span>Abierto</span>`
       resultado = '–'
-      acciones = `<div class="inline-form">
+      acciones = `<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
         <input type="number" class="score-inp" min="0" max="20" placeholder="–" id="gl-${p.id}">
         <span class="score-sep">–</span>
         <input type="number" class="score-inp" min="0" max="20" placeholder="–" id="gv-${p.id}">
         <button class="btn btn-primary btn-sm" onclick="cargarResultado('${p.id}')">Cargar</button>
+        <button class="btn btn-sm" style="background:rgba(255,68,68,.15);color:var(--rojo);border:1px solid rgba(255,68,68,.3)" onclick="borrarPartido('${p.id}')">🗑</button>
       </div>`
-    } else {
-      estadoPill = `<span class="pill pill-open"><span class="pill-dot"></span>Abierto</span>`
-      resultado = '–'
-      acciones = `<button class="btn btn-outline btn-sm" onclick="cerrarPartido('${p.id}')">Cerrar pred.</button>`
     }
 
     return `<tr>
@@ -580,6 +582,17 @@ async function cerrarPartido(partidoId) {
   showToast('Partido cerrado para nuevas predicciones')
 }
 
+async function borrarPartido(partidoId) {
+  if (!confirm('¿Borrar este partido? Se eliminarán también las predicciones asociadas.')) return
+  await db.from('predicciones_partidos').delete().eq('partido_id', partidoId)
+  await db.from('puntos_fantasy').delete().eq('partido_id', partidoId)
+  await db.from('rendimiento_jugadores').delete().eq('partido_id', partidoId)
+  await db.from('partidos').delete().eq('id', partidoId)
+  await cargarPartidosAdmin()
+  renderPartidosTable()
+  showToast('Partido eliminado')
+}
+
 function irARendimiento(partidoId) {
   showSection('rendimiento', document.querySelectorAll('.nav-item')[2])
   // Seleccionar el partido en el select
@@ -624,6 +637,8 @@ async function cargarFormRendimiento() {
         <input class="num-inp" type="number" min="0" max="20" value="${r.asistencias||0}" id="asist-${j.id}">
         <input type="checkbox" class="check-inp" id="motm-${j.id}" ${r.motm?'checked':''} title="MOTM">
         <input type="checkbox" class="check-inp" id="valla-${j.id}" ${r.valla_invicta?'checked':''} title="Valla invicta">
+        <input type="checkbox" class="check-inp" id="amarilla-${j.id}" ${r.tarjeta_amarilla?'checked':''} title="Tarjeta amarilla" style="accent-color:var(--oro)">
+        <input type="checkbox" class="check-inp" id="roja-${j.id}" ${r.tarjeta_roja?'checked':''} title="Tarjeta roja" style="accent-color:var(--rojo)">
         <input class="num-inp" type="number" min="0" max="120" value="${r.minutos_jugados||0}" id="min-${j.id}">
       </div>`
     }).join('')
@@ -631,7 +646,7 @@ async function cargarFormRendimiento() {
 
   document.getElementById('rendFormContainer').innerHTML = `
     <div class="rend-panel">
-      <div class="rend-row rend-header"><div></div><div>Jugador</div><div>Nota SS</div><div>Goles</div><div>Asist.</div><div>MOTM</div><div>Valla</div><div>Min.</div></div>
+      <div class="rend-row rend-header"><div></div><div>Jugador</div><div>Nota SS</div><div>Goles</div><div>Asist.</div><div>MOTM</div><div>Valla</div><div style="color:var(--oro)">🟨</div><div style="color:var(--rojo)">🟥</div><div>Min.</div></div>
       <div style="padding:6px 16px;font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);background:rgba(255,255,255,.02);border-bottom:1px solid var(--border);">
         ${partido.pais_local?.url_bandera ? `<img class="flag-img" src="${partido.pais_local.url_bandera}">` : ''} ${partido.pais_local?.nombre}
       </div>
@@ -661,9 +676,11 @@ async function guardarRendimiento() {
     const asist = parseInt(document.getElementById('asist-'+j.id)?.value) || 0
     const motm = document.getElementById('motm-'+j.id)?.checked || false
     const valla = document.getElementById('valla-'+j.id)?.checked || false
+    const amarilla = document.getElementById('amarilla-'+j.id)?.checked || false
+    const roja = document.getElementById('roja-'+j.id)?.checked || false
     const min = parseInt(document.getElementById('min-'+j.id)?.value) || 0
     if (!nota && min === 0) continue
-    rendimientos.push({ jugador_id: j.id, partido_id: partidoId, nota_sofascore: nota||null, goles, asistencias: asist, motm, valla_invicta: valla, minutos_jugados: min })
+    rendimientos.push({ jugador_id: j.id, partido_id: partidoId, nota_sofascore: nota||null, goles, asistencias: asist, motm, valla_invicta: valla, tarjeta_amarilla: amarilla, tarjeta_roja: roja, minutos_jugados: min })
   }
 
   const btn = document.getElementById('btnGuardarRend')
@@ -713,7 +730,7 @@ async function calcularPuntosFantasy(partidoId, rendimientos) {
       const jugador = allJugadores.find(j => j.id === (esSuplente ? rend.jugador_id : jugId))
       const pos = jugador?.posicion || 'delantero'
       const ptsNota = calcNota(rend.nota_sofascore)
-      const ptsBonus = calcBonus(pos, rend.goles, rend.asistencias, rend.motm, rend.valla_invicta)
+      const ptsBonus = calcBonus(pos, rend.goles, rend.asistencias, rend.motm, rend.valla_invicta, rend.tarjeta_roja)
 
       puntos.push({ usuario_id: eq.usuario_id, jugador_id: rend.jugador_id, partido_id: partidoId, es_suplente: esSuplente, pts_nota: ptsNota, pts_bonus: ptsBonus, pts_total: ptsNota + ptsBonus })
     }
@@ -730,9 +747,9 @@ function calcNota(n) {
   if (n >= 5) return 0; if (n >= 4) return -1; return -2
 }
 
-function calcBonus(pos, goles, asist, motm, valla) {
+function calcBonus(pos, goles, asist, motm, valla, roja) {
   const ptsGol = pos === 'defensor' ? 2 : 1
-  return (goles * ptsGol) + (asist * 0.5) + (motm ? 1 : 0) + (valla && pos === 'arquero' ? 1 : 0)
+  return (goles * ptsGol) + (asist * 0.5) + (motm ? 1 : 0) + (valla && pos === 'arquero' ? 1 : 0) + (roja ? -1 : 0)
 }
 
 async function cargarUsuarios() {
