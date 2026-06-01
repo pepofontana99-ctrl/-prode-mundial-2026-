@@ -186,7 +186,6 @@
   }
 
   async function cargarJugadores() {
-  async function cargarJugadores() {
     const { data: p1 } = await db
       .from('jugadores')
       .select('id,nombre,posicion,foto_url,pais_id,pais:pais_id(nombre,url_bandera)')
