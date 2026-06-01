@@ -191,6 +191,7 @@
       .select('id,nombre,posicion,foto_url,pais_id,pais:pais_id(nombre,url_bandera)')
       .eq('activo',true)
       .order('nombre')
+      .range(0, 2000)
     allPlayers = data || []
   }
 

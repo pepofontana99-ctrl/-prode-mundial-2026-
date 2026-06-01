@@ -1098,9 +1098,7 @@ let todosJugadores = []
 
 async function cargarJugadoresAdmin() {
   const { data } = await db
-    .from('jugadores')
-    .select('id,nombre,posicion,activo,pais:pais_id(id,nombre,url_bandera,grupo)')
-    .order('nombre')
+  const { data } = await db.from('jugadores').select('id,nombre,posicion,activo,pais:pais_id(id,nombre,url_bandera,grupo)').order('nombre').range(0, 2000)
   todosJugadores = data || []
   allJugadores = todosJugadores
   document.getElementById('jugCount').textContent = todosJugadores.length
