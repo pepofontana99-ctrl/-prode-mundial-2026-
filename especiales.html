@@ -250,11 +250,12 @@
   function maybeClose(e) { if (e.target === document.getElementById('modal')) closeModal() }
 
   function renderModal() {
-    const q = document.getElementById('modalSearch').value.toLowerCase()
+    const normalize = s => s.toLowerCase().normalize('NFD').replace(/[0300-036f]/g, '')
+    const q = normalize(document.getElementById('modalSearch').value)
     let items = []
 
     if (activeType === 'paises') {
-      items = paises.filter(p => p.nombre.toLowerCase().includes(q))
+      items = paises.filter(p => normalize(p.nombre).includes(q))
       const already = ['campeon','subcampeon','tercero'].filter(k => k !== activeField && picks[k]).map(k => picks[k].id)
       document.getElementById('modalList').innerHTML = items.map(p => {
         const disabled = already.includes(p.id)
@@ -266,7 +267,7 @@
     } else {
       let pool = jugadores
       if (activeType === 'arqueros') pool = jugadores.filter(j => j.posicion === 'arquero')
-      items = pool.filter(j => j.nombre.toLowerCase().includes(q) || (j.pais?.nombre||'').toLowerCase().includes(q))
+      items = pool.filter(j => normalize(j.nombre).includes(q) || normalize(j.pais?.nombre||'').includes(q))
       document.getElementById('modalList').innerHTML = items.map(j => {
         const flagHtml = j.pais?.url_bandera ? `<img class="mi-flag-img" src="${j.pais.url_bandera}">` : '<span class="mi-flag">🏳</span>'
         return `<div class="modal-item" onclick="pickItem({id:'${j.id}',flagUrl:'${j.pais?.url_bandera||''}',name:'${j.nombre.replace(/'/g,"\\'")}',sub:'${(j.pais?.nombre||'')} · ${j.posicion}'})">
