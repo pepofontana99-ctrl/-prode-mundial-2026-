@@ -207,8 +207,9 @@
   }
 
   async function cargarJugadores() {
-    const { data } = await db.from('jugadores').select('id,nombre,posicion,pais:pais_id(nombre,url_bandera)').eq('activo',true).order('nombre')
-    jugadores = data || []
+    const { data: p1 } = await db.from('jugadores').select('id,nombre,posicion,pais:pais_id(nombre,url_bandera)').eq('activo',true).order('nombre').range(0, 999)
+    const { data: p2 } = await db.from('jugadores').select('id,nombre,posicion,pais:pais_id(nombre,url_bandera)').eq('activo',true).order('nombre').range(1000, 1999)
+    jugadores = [...(p1 || []), ...(p2 || [])]
   }
 
   async function cargarMisPicks() {
