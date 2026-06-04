@@ -516,19 +516,26 @@
       .from('miembros_grupo')
       .select('grupo:grupo_id(id,nombre,codigo_invitacion)')
       .eq('usuario_id', currentUser.id)
-      .limit(1)
-      .single()
 
-    if (!data?.grupo) return
+    const el = document.getElementById('grupoInfo')
 
-    const g = data.grupo
-    document.getElementById('grupoInfo').innerHTML = `
-      <p style="font-size:13px;color:var(--muted);margin-bottom:8px">${g.nombre}</p>
-      <div class="group-code">
-        <span>${g.codigo_invitacion}</span>
-        <button class="copy-btn" onclick="navigator.clipboard.writeText('${g.codigo_invitacion}');this.textContent='¡Copiado!'">Copiar</button>
-      </div>
-      <a href="ranking_grupo.html?grupo=${g.id}" class="btn-primary" style="margin-top:8px">Ver ranking del grupo</a>`
+    if (!data || data.length === 0) {
+      el.innerHTML = `<p style="font-size:13px;color:var(--muted);margin-bottom:8px">No estás en ningún grupo todavía</p>`
+      return
+    }
+
+    el.innerHTML = data.map(m => {
+      const g = m.grupo
+      return `
+        <div style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:10px 12px;margin-bottom:8px;display:flex;align-items:center;gap:10px;">
+          <div style="flex:1">
+            <div style="font-size:13px;font-weight:500">${g.nombre}</div>
+            <div style="font-family:'Bebas Neue',sans-serif;font-size:16px;letter-spacing:2px;color:var(--oro)">${g.codigo_invitacion}</div>
+          </div>
+          <a href="ranking_grupo.html?grupo=${g.id}" class="join-btn" style="text-decoration:none;font-size:12px">Ver ranking</a>
+          <button class="copy-btn" onclick="navigator.clipboard.writeText('${g.codigo_invitacion}');this.textContent='✓'">Copiar</button>
+        </div>`
+    }).join('')
   }
 
   async function unirseGrupo() {
@@ -540,9 +547,19 @@
       .eq('codigo_invitacion', codigo)
       .single()
     if (!grupo) { alert('Código inválido'); return }
+
+    // Verificar si ya es miembro
+    const { data: yaEsMiembro } = await db
+      .from('miembros_grupo')
+      .select('id')
+      .eq('grupo_id', grupo.id)
+      .eq('usuario_id', currentUser.id)
+      .single()
+    if (yaEsMiembro) { alert('Ya sos miembro de este grupo'); return }
+
     const { error } = await db.from('miembros_grupo').insert({ grupo_id: grupo.id, usuario_id: currentUser.id })
-    if (error?.code === '23505') { alert('Ya sos miembro de este grupo'); return }
     if (error) { alert('Error al unirse'); return }
+    document.getElementById('joinCodigo').value = ''
     alert(`Te uniste a "${grupo.nombre}"`)
     cargarMiGrupo()
   }
