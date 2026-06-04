@@ -292,6 +292,15 @@
               <label class="form-label">Bloquear equipos fantasy</label>
               <button class="btn btn-danger" style="width:100%;margin-top:6px" onclick="bloquearEquipos()">🔒 Bloquear todos los equipos</button>
             </div>
+            <div class="form-group" style="margin:0;padding-top:12px;border-top:1px solid var(--border)">
+              <label class="form-label">Ventana de transferencias</label>
+              <div style="font-size:12px;color:var(--muted);margin-bottom:8px">Permite hasta 3 cambios por equipo al final de la fase de grupos</div>
+              <div style="display:flex;gap:8px;">
+                <button class="btn btn-primary" style="flex:1" onclick="toggleVentana(true)" id="btnAbrirVentana">🔓 Abrir ventana</button>
+                <button class="btn btn-danger" style="flex:1" onclick="toggleVentana(false)" id="btnCerrarVentana">🔒 Cerrar ventana</button>
+              </div>
+              <div id="ventanaStatus" style="font-size:12px;margin-top:8px;text-align:center;color:var(--muted)">Cargando...</div>
+            </div>
             <div style="padding-top:12px;border-top:1px solid var(--border)">
               <div style="font-size:13px;color:var(--muted);margin-bottom:6px">Sin equipo:</div>
               <div style="font-family:'Bebas Neue',sans-serif;font-size:28px;color:var(--rojo)" id="sinEquipo">–</div>
@@ -847,6 +856,22 @@ async function guardarGanadores() {
   showToast('Ganadores guardados y puntos calculados para todos los usuarios')
 }
 
+async function toggleVentana(abrir) {
+  await db.from('configuracion_torneo').update({ ventana_transferencias: abrir }).eq('id', 1)
+  cargarEstadoVentana()
+  showToast(abrir ? '✅ Ventana de transferencias abierta' : '🔒 Ventana de transferencias cerrada')
+}
+
+async function cargarEstadoVentana() {
+  const { data } = await db.from('configuracion_torneo').select('ventana_transferencias').eq('id', 1).single()
+  const abierta = data?.ventana_transferencias
+  const status = document.getElementById('ventanaStatus')
+  if (status) {
+    status.textContent = abierta ? '✅ Ventana ABIERTA — los usuarios pueden hacer cambios' : '🔒 Ventana CERRADA'
+    status.style.color = abierta ? 'var(--verde)' : 'var(--muted)'
+  }
+}
+
 async function bloquearPredicciones() {
   if (!confirm('¿Bloquear TODAS las predicciones? Esto no se puede deshacer.')) return
   await db.from('predicciones_especiales').update({ bloqueado: true }).neq('id', '00000000-0000-0000-0000-000000000000')
@@ -913,7 +938,7 @@ function showSection(sec, el) {
   if (sec === 'tabla') cargarTablaAdmin()
   if (sec === 'usuarios') cargarUsuarios()
   if (sec === 'ganadores') cargarGanadores()
-  if (sec === 'config') cargarUsuarios()
+  if (sec === 'config') { cargarUsuarios(); cargarEstadoVentana() }
 }
 
 function closeModal(id) { document.getElementById(id).classList.remove('show') }

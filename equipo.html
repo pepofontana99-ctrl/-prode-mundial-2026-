@@ -163,6 +163,10 @@
   let posFilter = 'all'
   let activeSlot = null
   let bloqueado = false
+  let ventanaAbierta = false
+  let cambiosUsados = 0
+  const MAX_CAMBIOS = 3
+  let equipoOriginal = {} // para rastrear qué slots cambiaron
 
   const slotPos = {
     arq:'arquero', def1:'defensor',def2:'defensor',def3:'defensor',def4:'defensor',
@@ -202,22 +206,41 @@
   }
 
   async function cargarMiEquipo() {
+    // Cargar configuración de ventana
+    const { data: config } = await db.from('configuracion_torneo').select('ventana_transferencias').eq('id', 1).single()
+    ventanaAbierta = config?.ventana_transferencias || false
+
     const { data } = await db
       .from('equipos_fantasy')
-      .select('bloqueado,arquero_id,def1_id,def2_id,def3_id,def4_id,med1_id,med2_id,med3_id,del1_id,del2_id,del3_id,suplente_def_id,suplente_med_id,suplente_del_id')
+      .select('bloqueado,cambios_usados,arquero_id,def1_id,def2_id,def3_id,def4_id,med1_id,med2_id,med3_id,del1_id,del2_id,del3_id,suplente_def_id,suplente_med_id,suplente_del_id')
       .eq('usuario_id', currentUser.id)
       .single()
     if (!data) return
-    bloqueado = data.bloqueado
-    if (bloqueado) {
+    bloqueado = data.bloqueado && !ventanaAbierta
+    cambiosUsados = data.cambios_usados || 0
+
+    if (data.bloqueado && !ventanaAbierta) {
       document.getElementById('lockedBanner').style.display = 'block'
       document.getElementById('saveBtn').disabled = true
+    } else if (ventanaAbierta && data.bloqueado) {
+      const restantes = MAX_CAMBIOS - cambiosUsados
+      document.getElementById('lockedBanner').style.display = 'block'
+      document.getElementById('lockedBanner').innerHTML = `🔄 Ventana de transferencias abierta — te quedan <strong>${restantes}</strong> cambio${restantes !== 1 ? 's' : ''}`
+      document.getElementById('lockedBanner').style.background = 'rgba(0,200,83,.08)'
+      document.getElementById('lockedBanner').style.borderColor = 'rgba(0,200,83,.2)'
+      document.getElementById('lockedBanner').style.color = 'var(--verde)'
+      if (restantes <= 0) {
+        document.getElementById('saveBtn').disabled = true
+        document.getElementById('lockedBanner').innerHTML = '✅ Ya usaste los 3 cambios permitidos'
+      }
     }
     team.arq = data.arquero_id
     team.def1 = data.def1_id; team.def2 = data.def2_id; team.def3 = data.def3_id; team.def4 = data.def4_id
     team.med1 = data.med1_id; team.med2 = data.med2_id; team.med3 = data.med3_id
     team.del1 = data.del1_id; team.del2 = data.del2_id; team.del3 = data.del3_id
     team['sup-def'] = data.suplente_def_id; team['sup-med'] = data.suplente_med_id; team['sup-del'] = data.suplente_del_id
+    // Guardar copia del equipo original para contar cambios
+    equipoOriginal = { ...team }
   }
 
   function getPlayer(id) { return allPlayers.find(p => p.id === id) }
@@ -300,6 +323,17 @@
       showToast(`Máximo 2 jugadores por selección (${p.pais?.nombre})`,'error'); return
     }
 
+    // Contar cambios en ventana de transferencias
+    if (ventanaAbierta && team[activeSlot] !== null) {
+      const nuevoCambio = equipoOriginal[activeSlot] !== undefined && playerId !== equipoOriginal[activeSlot]
+      if (nuevoCambio) {
+        const cambiosNuevos = Object.keys(equipoOriginal).filter(slot => team[slot] !== equipoOriginal[slot] && team[slot] !== null).length
+        if (cambiosNuevos >= MAX_CAMBIOS - cambiosUsados) {
+          showToast(`Solo podés hacer ${MAX_CAMBIOS - cambiosUsados} cambio${MAX_CAMBIOS - cambiosUsados !== 1 ? 's' : ''} más`, 'error'); return
+        }
+      }
+    }
+
     team[activeSlot] = playerId
     activeSlot = null
     renderField(); renderList()
@@ -368,6 +402,18 @@
     const missing = ['sup-def','sup-med','sup-del'].filter(k => !team[k])
     if (missing.length) { showToast('Faltan suplentes','error'); return }
 
+    // Calcular cambios nuevos en ventana de transferencias
+    let nuevosCambios = 0
+    if (ventanaAbierta) {
+      nuevosCambios = Object.keys(equipoOriginal).filter(slot =>
+        equipoOriginal[slot] !== undefined && team[slot] !== equipoOriginal[slot]
+      ).length
+      const totalCambios = cambiosUsados + nuevosCambios
+      if (totalCambios > MAX_CAMBIOS) {
+        showToast(`Superás el límite de ${MAX_CAMBIOS} cambios`, 'error'); return
+      }
+    }
+
     const btn = document.getElementById('saveBtn')
     btn.disabled = true; btn.textContent = 'Guardando...'
 
@@ -377,12 +423,29 @@
       def1_id: team.def1, def2_id: team.def2, def3_id: team.def3, def4_id: team.def4,
       med1_id: team.med1, med2_id: team.med2, med3_id: team.med3,
       del1_id: team.del1, del2_id: team.del2, del3_id: team.del3,
-      suplente_def_id: team['sup-def'], suplente_med_id: team['sup-med'], suplente_del_id: team['sup-del']
+      suplente_def_id: team['sup-def'], suplente_med_id: team['sup-med'], suplente_del_id: team['sup-del'],
+      cambios_usados: cambiosUsados + nuevosCambios
     }, { onConflict: 'usuario_id' })
 
     btn.disabled = false; btn.textContent = 'Guardar equipo'
     if (error) { showToast('Error al guardar','error'); return }
-    showToast('¡Equipo guardado!')
+
+    cambiosUsados += nuevosCambios
+    // Actualizar equipo original
+    Object.keys(equipoOriginal).forEach(k => equipoOriginal[k] = team[k])
+
+    if (ventanaAbierta) {
+      const restantes = MAX_CAMBIOS - cambiosUsados
+      showToast(`¡Equipo guardado! Te quedan ${restantes} cambio${restantes !== 1 ? 's' : ''}`)
+      if (restantes <= 0) {
+        document.getElementById('lockedBanner').innerHTML = '✅ Ya usaste los 3 cambios permitidos'
+        document.getElementById('saveBtn').disabled = true
+      } else {
+        document.getElementById('lockedBanner').innerHTML = `🔄 Ventana de transferencias abierta — te quedan <strong>${restantes}</strong> cambio${restantes !== 1 ? 's' : ''}`
+      }
+    } else {
+      showToast('¡Equipo guardado!')
+    }
   }
 
   function showToast(msg, type) {
