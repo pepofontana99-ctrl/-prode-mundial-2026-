@@ -38,6 +38,11 @@
   .player-slot.suplente .player-circle{border-style:dashed;border-color:rgba(255,255,255,0.15);background:rgba(255,255,255,0.02);}
   .remove-btn{position:absolute;top:-4px;right:-4px;width:16px;height:16px;border-radius:50%;background:#ff4444;border:none;cursor:pointer;font-size:10px;color:#fff;display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity .15s;line-height:1;}
   .player-slot:hover .remove-btn{opacity:1;}
+  .player-slot[draggable=true]{cursor:grab;}
+  .player-slot.dragging{opacity:.35;transform:scale(.95);}
+  .player-slot.drag-over .player-circle{border-color:var(--oro)!important;box-shadow:0 0 14px rgba(255,214,0,.5)!important;}
+  .bench-chip.drag-over{border-color:var(--oro)!important;box-shadow:0 0 14px rgba(255,214,0,.4)!important;background:rgba(255,214,0,.05)!important;}
+  .swap-hint{font-size:10px;color:var(--muted);text-align:center;padding:4px 0 2px;letter-spacing:.3px;}
   .player-flag-img{width:36px;height:24px;border-radius:3px;object-fit:cover;}
   .player-name{font-size:10px;font-weight:500;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:80px;}
   .empty-slot-label{font-size:10px;color:rgba(255,255,255,0.25);}
@@ -122,7 +127,7 @@
     </div>
 
     <div class="bench-section">
-      <div class="bench-title">Suplentes</div>
+      <div class="bench-title">Suplentes <span class="swap-hint">· arrastrá para intercambiar con titulares</span></div>
       <div class="bench-row">
         <div class="bench-chip" id="bench-sup-def" onclick="openSlot('sup-def')"></div>
         <div class="bench-chip" id="bench-sup-med" onclick="openSlot('sup-med')"></div>
@@ -263,7 +268,12 @@
           const flagHtml = p.pais?.url_bandera
             ? `<img class="player-flag-img" src="${p.pais.url_bandera}">`
             : '🏳'
-          return `<div class="player-slot filled" onclick="openSlot('${slotId}')">
+          return `<div class="player-slot filled" draggable="true"
+            onclick="openSlot('${slotId}')"
+            ondragstart="dragStart(event,'${slotId}')"
+            ondragover="dragOver(event)"
+            ondragleave="dragLeave(event)"
+            ondrop="dragDrop(event,'${slotId}')">
             <div class="player-circle">${flagHtml}<button class="remove-btn" onclick="event.stopPropagation();removePlayer('${slotId}')">✕</button></div>
             <div class="player-name">${p.nombre}</div>
           </div>`
@@ -285,13 +295,78 @@
       if (p) {
         const flagHtml = p.pais?.url_bandera ? `<img class="pi-flag-img" src="${p.pais.url_bandera}">` : '🏳'
         bench.className = 'bench-chip filled'
+        bench.setAttribute('draggable', 'true')
+        bench.setAttribute('ondragstart', `dragStart(event,'${slotId}')`)
+        bench.setAttribute('ondragover', 'dragOver(event)')
+        bench.setAttribute('ondragleave', 'dragLeave(event)')
+        bench.setAttribute('ondrop', `dragDrop(event,'${slotId}')`)
         bench.innerHTML = `<div class="bench-flag">${flagHtml}</div><div class="bench-info"><div class="bench-name">${p.nombre}</div><div class="bench-pos">${supLabels[slotId]}</div></div><div class="bench-remove" onclick="event.stopPropagation();removePlayer('${slotId}')">✕</div>`
       } else {
         bench.className = 'bench-chip'
+        bench.removeAttribute('draggable')
+        bench.setAttribute('ondragover', `dragOverEmpty(event,'${slotId}')`)
+        bench.setAttribute('ondragleave', 'dragLeave(event)')
+        bench.setAttribute('ondrop', `dragDrop(event,'${slotId}')`)
         bench.innerHTML = `<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;flex:1;"><div style="font-size:18px;color:rgba(255,255,255,.15)">+</div><div style="font-size:10px;color:rgba(255,255,255,.2);text-align:center">${supLabels[slotId]}</div></div>`
       }
     }
     updateCounters()
+  }
+
+  // ── DRAG & DROP ──
+  let dragSourceSlot = null
+
+  function dragStart(e, slotId) {
+    dragSourceSlot = slotId
+    e.dataTransfer.effectAllowed = 'move'
+    e.dataTransfer.setData('text/plain', slotId)
+    setTimeout(() => e.target.classList.add('dragging'), 0)
+  }
+
+  function dragOver(e) {
+    e.preventDefault()
+    e.dataTransfer.dropEffect = 'move'
+    e.currentTarget.classList.add('drag-over')
+  }
+
+  function dragOverEmpty(e, slotId) {
+    if (!dragSourceSlot) return
+    const srcPos = slotPos[dragSourceSlot]
+    const tgtPos = slotPos[slotId]
+    if (srcPos === tgtPos) {
+      e.preventDefault()
+      e.currentTarget.classList.add('drag-over')
+    }
+  }
+
+  function dragLeave(e) {
+    e.currentTarget.classList.remove('drag-over')
+  }
+
+  function dragDrop(e, targetSlot) {
+    e.preventDefault()
+    e.currentTarget.classList.remove('drag-over')
+    document.querySelectorAll('.dragging').forEach(el => el.classList.remove('dragging'))
+
+    if (!dragSourceSlot || dragSourceSlot === targetSlot) { dragSourceSlot = null; return }
+
+    const srcPos = slotPos[dragSourceSlot]
+    const tgtPos = slotPos[targetSlot]
+
+    if (srcPos !== tgtPos) {
+      showToast(`Solo podés intercambiar jugadores de la misma posición`, 'error')
+      dragSourceSlot = null
+      return
+    }
+
+    // Intercambiar
+    const tmp = team[dragSourceSlot]
+    team[dragSourceSlot] = team[targetSlot]
+    team[targetSlot] = tmp
+
+    dragSourceSlot = null
+    renderField()
+    showToast('¡Jugadores intercambiados! Guardá para confirmar.')
   }
 
   function openSlot(slotId) {
