@@ -219,7 +219,10 @@
     <!-- RANKING -->
     <div class="ranking-card">
       <div class="ranking-header">
-        <h3>Ranking global</h3>
+        <h3 id="rankingTitle">Ranking global</h3>
+      </div>
+      <div id="rankingTabs" style="display:flex;gap:4px;padding:8px 1.25rem;border-bottom:1px solid var(--border);overflow-x:auto;flex-wrap:nowrap;">
+        <button class="rtab active" id="rtab-global" onclick="setRankingTab('global',this)">🌍 Global</button>
       </div>
       <div id="rankingList"><div style="padding:1rem"><div class="skeleton" style="margin-bottom:8px"></div><div class="skeleton" style="margin-bottom:8px"></div><div class="skeleton"></div></div></div>
     </div>
@@ -404,6 +407,44 @@
       </div>`
   }
 
+  let misGrupos = []
+  let rankingTabActual = 'global'
+
+  async function setRankingTab(tab, btn) {
+    rankingTabActual = tab
+    document.querySelectorAll('.rtab').forEach(b => b.classList.remove('active'))
+    btn.classList.add('active')
+    if (tab === 'global') {
+      document.getElementById('rankingTitle').textContent = 'Ranking global'
+      cargarRanking()
+    } else {
+      const grupo = misGrupos.find(g => g.id === tab)
+      document.getElementById('rankingTitle').textContent = grupo?.nombre || 'Grupo'
+      cargarRankingGrupo(tab)
+    }
+  }
+
+  async function cargarRankingGrupo(grupoId) {
+    const el = document.getElementById('rankingList')
+    el.innerHTML = '<div style="padding:1rem"><div class="skeleton" style="margin-bottom:8px"></div><div class="skeleton" style="margin-bottom:8px"></div></div>'
+
+    const { data: miembros } = await db
+      .from('miembros_grupo')
+      .select('usuario_id')
+      .eq('grupo_id', grupoId)
+
+    if (!miembros?.length) { el.innerHTML = '<div style="padding:1rem;text-align:center;color:var(--muted);font-size:13px">Sin miembros</div>'; return }
+
+    const userIds = miembros.map(m => m.usuario_id)
+    const { data: ranking } = await db
+      .from('ranking_global')
+      .select('usuario_id,nombre,pts_total,resultados_exactos')
+      .in('usuario_id', userIds)
+      .order('pts_total', { ascending: false })
+
+    renderRankingList(ranking || [])
+  }
+
   async function cargarRanking() {
     const { data } = await db
       .from('ranking_global')
@@ -421,17 +462,18 @@
       document.getElementById('miTotal').textContent = yo.pts_total || 0
       document.getElementById('miExactos').textContent = yo.resultados_exactos || 0
       document.getElementById('miPrediccion').textContent = yo.pts_predicciones || 0
-      document.getElementById('miFantasy').textContent = parseFloat(yo.pts_fantasy || 0).toFixed(1)
     } else {
       document.getElementById('miPos').innerHTML = `–<span>°</span>`
       document.getElementById('miTotal').textContent = 0
       document.getElementById('miExactos').textContent = 0
       document.getElementById('miPrediccion').textContent = 0
-      document.getElementById('miFantasy').textContent = '0.0'
     }
 
-    // Lista ranking
-    const html = data.slice(0, 10).map((r, i) => {
+    renderRankingList(data.slice(0, 10))
+  }
+
+  function renderRankingList(data) {
+    const html = data.map((r, i) => {
       const isMe = r.usuario_id === currentUser.id
       const initials = (r.nombre || 'U').slice(0,2).toUpperCase()
       const topClass = i < 3 ? 'top' : ''
@@ -518,24 +560,31 @@
       .eq('usuario_id', currentUser.id)
 
     const el = document.getElementById('grupoInfo')
+    misGrupos = (data || []).map(m => m.grupo).filter(Boolean)
 
-    if (!data || data.length === 0) {
+    // Agregar tabs de grupos al ranking
+    const tabsEl = document.getElementById('rankingTabs')
+    if (tabsEl && misGrupos.length > 0) {
+      const grupoTabs = misGrupos.map(g =>
+        `<button class="rtab" id="rtab-${g.id}" onclick="setRankingTab('${g.id}',this)">👥 ${g.nombre}</button>`
+      ).join('')
+      tabsEl.innerHTML = `<button class="rtab active" id="rtab-global" onclick="setRankingTab('global',this)">🌍 Global</button>${grupoTabs}`
+    }
+
+    if (misGrupos.length === 0) {
       el.innerHTML = `<p style="font-size:13px;color:var(--muted);margin-bottom:8px">No estás en ningún grupo todavía</p>`
       return
     }
 
-    el.innerHTML = data.map(m => {
-      const g = m.grupo
-      return `
-        <div style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:10px 12px;margin-bottom:8px;display:flex;align-items:center;gap:10px;">
-          <div style="flex:1">
-            <div style="font-size:13px;font-weight:500">${g.nombre}</div>
-            <div style="font-family:'Bebas Neue',sans-serif;font-size:16px;letter-spacing:2px;color:var(--oro)">${g.codigo_invitacion}</div>
-          </div>
-          <a href="ranking_grupo.html?grupo=${g.id}" class="join-btn" style="text-decoration:none;font-size:12px">Ver ranking</a>
-          <button class="copy-btn" onclick="navigator.clipboard.writeText('${g.codigo_invitacion}');this.textContent='✓'">Copiar</button>
-        </div>`
-    }).join('')
+    el.innerHTML = misGrupos.map(g => `
+      <div style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:10px 12px;margin-bottom:8px;display:flex;align-items:center;gap:10px;">
+        <div style="flex:1">
+          <div style="font-size:13px;font-weight:500">${g.nombre}</div>
+          <div style="font-family:'Bebas Neue',sans-serif;font-size:16px;letter-spacing:2px;color:var(--oro)">${g.codigo_invitacion}</div>
+        </div>
+        <a href="ranking_grupo.html?grupo=${g.id}" class="join-btn" style="text-decoration:none;font-size:12px">Ver ranking</a>
+        <button class="copy-btn" onclick="navigator.clipboard.writeText('${g.codigo_invitacion}');this.textContent='✓'">Copiar</button>
+      </div>`).join('')
   }
 
   async function unirseGrupo() {
