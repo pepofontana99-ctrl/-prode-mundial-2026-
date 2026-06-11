@@ -874,14 +874,15 @@ async function cargarEstadoVentana() {
 
 async function bloquearPredicciones() {
   if (!confirm('¿Bloquear TODAS las predicciones? Esto no se puede deshacer.')) return
-  await db.from('predicciones_especiales').update({ bloqueado: true }).neq('id', '00000000-0000-0000-0000-000000000000')
+  await db.from('predicciones_especiales').update({ bloqueado: true }).gte('id', '00000000-0000-0000-0000-000000000000')
   await db.from('partidos').update({ cerrado: true }).eq('jugado', false)
   showToast('Todas las predicciones bloqueadas')
 }
 
 async function bloquearEquipos() {
   if (!confirm('¿Bloquear TODOS los equipos fantasy?')) return
-  await db.from('equipos_fantasy').update({ bloqueado: true }).neq('id', '00000000-0000-0000-0000-000000000000')
+  const { error } = await db.from('equipos_fantasy').update({ bloqueado: true }).gte('cambios_usados', 0)
+  if (error) { showToast('Error al bloquear equipos', 'error'); return }
   showToast('Todos los equipos bloqueados')
 }
 
