@@ -648,17 +648,18 @@
     const el = document.getElementById('topJugadoresList')
     el.innerHTML = '<div style="padding:1rem"><div class="skeleton" style="height:200px;border-radius:10px"></div></div>'
 
-    let pts = []
+    let rends = []
 
     if (topTab === 'torneo') {
       const { data } = await db
-        .from('puntos_fantasy')
-        .select('jugador_id,pts_total,jugador:jugador_id(nombre,posicion,pais:pais_id(nombre,url_bandera))')
+        .from('rendimiento_jugadores')
+        .select('jugador_id,nota_sofascore,goles,asistencias,motm,valla_invicta,tarjeta_roja,minutos_jugados,jugador:jugador_id(nombre,posicion,pais:pais_id(nombre,url_bandera))')
+        .gt('minutos_jugados', 0)
       if (!data || data.length === 0) {
-        el.innerHTML = '<div style="padding:1.5rem;text-align:center;color:var(--muted);font-size:13px">Aún no hay puntos cargados</div>'
+        el.innerHTML = '<div style="padding:1.5rem;text-align:center;color:var(--muted);font-size:13px">Aún no hay rendimientos cargados</div>'
         return
       }
-      pts = data
+      rends = data
     } else {
       if (partidosFechas.length === 0) {
         const { data: ps } = await db
@@ -689,33 +690,45 @@
 
       const ids = val.split(',')
       const { data } = await db
-        .from('puntos_fantasy')
-        .select('jugador_id,pts_total,jugador:jugador_id(nombre,posicion,pais:pais_id(nombre,url_bandera))')
+        .from('rendimiento_jugadores')
+        .select('jugador_id,nota_sofascore,goles,asistencias,motm,valla_invicta,tarjeta_roja,minutos_jugados,jugador:jugador_id(nombre,posicion,pais:pais_id(nombre,url_bandera))')
         .in('partido_id', ids)
+        .gt('minutos_jugados', 0)
       if (!data || data.length === 0) {
-        el.innerHTML = '<div style="padding:1.5rem;text-align:center;color:var(--muted);font-size:13px">No hay puntos para esta fecha</div>'
+        el.innerHTML = '<div style="padding:1.5rem;text-align:center;color:var(--muted);font-size:13px">No hay rendimientos para esta fecha</div>'
         return
       }
-      pts = data
+      rends = data
     }
 
-    // Sumar puntos por jugador
+    // Calcular puntos por jugador
+    function calcPts(r) {
+      const pos = r.jugador?.posicion
+      const nota = r.nota_sofascore
+      const ptsNota = !nota ? 0 : nota >= 9 ? 3 : nota >= 7.5 ? 2 : nota >= 6.5 ? 1 : nota >= 5 ? 0 : nota >= 4 ? -1 : -2
+      const ptsBonus = (pos === 'defensor' ? r.goles * 2 : r.goles * 1)
+        + (r.asistencias * 0.5)
+        + (r.motm ? 1 : 0)
+        + (r.valla_invicta && pos === 'arquero' ? 1 : 0)
+        + (r.tarjeta_roja ? -1 : 0)
+      return ptsNota + ptsBonus
+    }
+
+    // Agrupar por jugador y sumar
     const mapa = {}
-    pts.forEach(p => {
-      if (!mapa[p.jugador_id]) mapa[p.jugador_id] = { jugador: p.jugador, total: 0 }
-      mapa[p.jugador_id].total += parseFloat(p.pts_total || 0)
+    rends.forEach(r => {
+      if (!mapa[r.jugador_id]) mapa[r.jugador_id] = { jugador: r.jugador, total: 0 }
+      mapa[r.jugador_id].total += calcPts(r)
     })
     const todos = Object.values(mapa).sort((a,b) => b.total - a.total)
 
-    // Top 5 por posición
     const posiciones = [
       { key: 'delantero', label: '⚽ Delanteros' },
       { key: 'mediocampista', label: '🔵 Mediocampistas' },
       { key: 'defensor', label: '🛡 Defensores' },
       { key: 'arquero', label: '🧤 Arqueros' },
     ]
-
-    const posColor = { delantero:'#D85A30', mediocampista:'var(--azul,#378ADD)', defensor:'var(--verde)', arquero:'var(--oro)' }
+    const posColor = { delantero:'#D85A30', mediocampista:'#378ADD', defensor:'var(--verde)', arquero:'var(--oro)' }
 
     const html = posiciones.map(pos => {
       const jugadores = todos.filter(d => d.jugador?.posicion === pos.key).slice(0, 5)
