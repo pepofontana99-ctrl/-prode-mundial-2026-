@@ -61,7 +61,39 @@
   .score-inp:focus{border-color:var(--verde);}
   .score-sep{font-family:'Bebas Neue',sans-serif;color:var(--muted);font-size:18px;}
   .rend-panel{background:var(--bg2);border:1px solid var(--border);border-radius:14px;overflow:hidden;margin-bottom:1.5rem;}
-  .rend-row{display:grid;grid-template-columns:30px 1fr 80px 55px 55px 55px 55px 45px 45px 70px;align-items:center;gap:8px;padding:9px 16px;border-bottom:1px solid var(--border);font-size:13px;}
+  .rend-search{padding:10px 14px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--bg2);z-index:2;}
+  .rend-search input{width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:7px;color:var(--texto);font-family:'DM Sans',sans-serif;font-size:13px;padding:8px 12px;outline:none;transition:border-color .2s;}
+  .rend-search input:focus{border-color:var(--verde);}
+  .rend-equipo-title{padding:6px 14px;font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);background:rgba(255,255,255,.02);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;}
+  .rend-jugador-row{display:flex;align-items:center;gap:12px;padding:10px 14px;border-bottom:1px solid var(--border);cursor:pointer;transition:background .15s;}
+  .rend-jugador-row:hover{background:rgba(255,255,255,.03);}
+  .rend-jugador-row.cargado{background:rgba(0,200,83,.04);border-left:3px solid var(--verde);}
+  .rend-jugador-row.no-jugo{opacity:.5;}
+  .rj-flag{width:22px;height:15px;border-radius:2px;object-fit:cover;flex-shrink:0;}
+  .rj-name{flex:1;font-size:13px;font-weight:500;}
+  .rj-pos{font-size:11px;color:var(--muted);}
+  .rj-nota{font-family:'Bebas Neue',sans-serif;font-size:18px;color:var(--verde);}
+  .rj-status{font-size:11px;color:var(--muted);}
+  /* Modal rendimiento jugador */
+  .rend-modal{display:none;position:fixed;inset:0;z-index:500;background:rgba(0,0,0,.7);backdrop-filter:blur(6px);align-items:center;justify-content:center;}
+  .rend-modal.show{display:flex;}
+  .rend-modal-box{background:var(--bg2);border:1px solid var(--border);border-radius:16px;padding:1.5rem;width:400px;max-width:95vw;}
+  .rend-modal-header{display:flex;align-items:center;gap:12px;margin-bottom:1.25rem;}
+  .rend-modal-title{font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:1px;flex:1;}
+  .rend-checks{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:1rem;}
+  .rend-check-item{display:flex;align-items:center;gap:8px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:10px 12px;cursor:pointer;transition:all .15s;}
+  .rend-check-item:hover{border-color:var(--verde);}
+  .rend-check-item.checked{background:rgba(0,200,83,.08);border-color:rgba(0,200,83,.3);}
+  .rend-check-item.checked-oro{background:rgba(255,214,0,.08);border-color:rgba(255,214,0,.3);}
+  .rend-check-item.checked-red{background:rgba(255,68,68,.08);border-color:rgba(255,68,68,.3);}
+  .rend-check-label{font-size:12px;font-weight:500;flex:1;}
+  .rend-num-row{display:flex;gap:10px;margin-bottom:1rem;}
+  .rend-num-group{flex:1;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:8px 12px;}
+  .rend-num-label{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;}
+  .rend-num-input{width:100%;background:none;border:none;color:var(--texto);font-family:'Bebas Neue',sans-serif;font-size:28px;text-align:center;outline:none;-moz-appearance:textfield;}
+  .rend-num-input::-webkit-outer-spin-button,.rend-num-input::-webkit-inner-spin-button{-webkit-appearance:none;}
+  .nota-input-big{width:100%;background:none;border:none;color:var(--verde);font-family:'Bebas Neue',sans-serif;font-size:36px;text-align:center;outline:none;-moz-appearance:textfield;}
+  .nota-input-big::-webkit-outer-spin-button,.nota-input-big::-webkit-inner-spin-button{-webkit-appearance:none;}
   .rend-row:last-child{border-bottom:none;}
   .rend-row:hover{background:rgba(255,255,255,.02);}
   .rend-header{background:rgba(255,255,255,.02);font-size:11px;color:var(--muted);font-weight:500;text-transform:uppercase;letter-spacing:.5px;}
@@ -190,7 +222,7 @@
       </div>
       <div id="rendFormContainer"><div class="empty-state">Elegí un partido arriba para cargar el rendimiento de los jugadores.</div></div>
       <div id="rendActions" style="display:none;justify-content:flex-end;gap:8px;margin-top:1rem;">
-        <button class="btn btn-outline" onclick="document.getElementById('rendPartidoSelect').value='';document.getElementById('rendFormContainer').innerHTML='<div class=empty-state>Elegí un partido arriba.</div>';document.getElementById('rendActions').style.display='none'">Cancelar</button>
+        <button class="btn btn-outline" onclick="resetRendimiento()">Cancelar</button>
         <button class="btn btn-primary" id="btnGuardarRend" onclick="guardarRendimiento()">Guardar y calcular puntos</button>
       </div>
     </div>
@@ -381,6 +413,69 @@
     <div class="modal-actions">
       <button class="btn btn-outline" onclick="closeModal('modalJugador')">Cancelar</button>
       <button class="btn btn-primary" onclick="guardarJugador()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL RENDIMIENTO JUGADOR -->
+<div class="rend-modal" id="rendModal" onclick="maybeCloseRend(event)">
+  <div class="rend-modal-box">
+    <div class="rend-modal-header">
+      <img id="rendModalFlag" style="width:32px;height:22px;border-radius:3px;object-fit:cover">
+      <div>
+        <div class="rend-modal-title" id="rendModalName">Jugador</div>
+        <div style="font-size:11px;color:var(--muted)" id="rendModalPos">Posición</div>
+      </div>
+      <button onclick="closeRendModal()" style="background:none;border:1px solid var(--border);border-radius:6px;color:var(--muted);cursor:pointer;padding:4px 10px;font-family:'DM Sans',sans-serif;font-size:12px;">✕</button>
+    </div>
+
+    <!-- Jugó -->
+    <div class="rend-check-item" id="check-jugo" onclick="toggleCheck('jugo')" style="margin-bottom:1rem;justify-content:center;">
+      <input type="checkbox" id="inp-jugo" class="check-inp" style="pointer-events:none">
+      <span class="rend-check-label" style="text-align:center;font-size:14px">✅ Jugó en este partido</span>
+    </div>
+
+    <!-- Nota -->
+    <div style="text-align:center;margin-bottom:1rem;">
+      <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Nota SofaScore</div>
+      <input type="number" class="nota-input-big" id="inp-nota" step="0.1" min="1" max="10" placeholder="–">
+    </div>
+
+    <!-- Goles y asistencias -->
+    <div class="rend-num-row">
+      <div class="rend-num-group">
+        <div class="rend-num-label">Goles</div>
+        <input type="number" class="rend-num-input" id="inp-goles" min="0" max="20" value="0">
+      </div>
+      <div class="rend-num-group">
+        <div class="rend-num-label">Asistencias</div>
+        <input type="number" class="rend-num-input" id="inp-asist" min="0" max="20" value="0">
+      </div>
+    </div>
+
+    <!-- Checks -->
+    <div class="rend-checks">
+      <div class="rend-check-item" id="check-motm" onclick="toggleCheck('motm')">
+        <input type="checkbox" id="inp-motm" class="check-inp" style="pointer-events:none">
+        <span class="rend-check-label">⭐ MOTM</span>
+      </div>
+      <div class="rend-check-item" id="check-valla" onclick="toggleCheck('valla')">
+        <input type="checkbox" id="inp-valla" class="check-inp" style="pointer-events:none">
+        <span class="rend-check-label">🧤 Valla invicta</span>
+      </div>
+      <div class="rend-check-item" id="check-amarilla" onclick="toggleCheck('amarilla')">
+        <input type="checkbox" id="inp-amarilla" class="check-inp" style="pointer-events:none;accent-color:var(--oro)">
+        <span class="rend-check-label">🟨 T. Amarilla</span>
+      </div>
+      <div class="rend-check-item" id="check-roja" onclick="toggleCheck('roja')">
+        <input type="checkbox" id="inp-roja" class="check-inp" style="pointer-events:none;accent-color:var(--rojo)">
+        <span class="rend-check-label">🟥 T. Roja</span>
+      </div>
+    </div>
+
+    <div style="display:flex;gap:8px;margin-top:4px;">
+      <button class="btn btn-outline" style="flex:1" onclick="closeRendModal()">Cancelar</button>
+      <button class="btn btn-primary" style="flex:2" onclick="guardarJugadorRendimiento()">Guardar jugador</button>
     </div>
   </div>
 </div>
@@ -612,6 +707,18 @@ function irARendimiento(partidoId) {
   }, 100)
 }
 
+let rendJugadoresPartido = []
+let rendDataMap = {} // jugador_id → datos guardados
+let rendJugadorActual = null
+
+function resetRendimiento() {
+  document.getElementById('rendPartidoSelect').value = ''
+  document.getElementById('rendFormContainer').innerHTML = '<div class="empty-state">Elegí un partido arriba para cargar el rendimiento de los jugadores.</div>'
+  document.getElementById('rendActions').style.display = 'none'
+  rendJugadoresPartido = []
+  rendDataMap = {}
+}
+
 async function cargarFormRendimiento() {
   const partidoId = document.getElementById('rendPartidoSelect').value
   if (!partidoId) {
@@ -623,7 +730,7 @@ async function cargarFormRendimiento() {
   const partido = allPartidos.find(p => p.id === partidoId)
   if (!partido) return
 
-  // Traer jugadores directamente de la base por pais_id
+  // Traer jugadores de ambos equipos
   const paisIds = [partido.pais_local?.id, partido.pais_visitante?.id].filter(Boolean)
   const { data: jugadoresDB } = await db
     .from('jugadores')
@@ -631,9 +738,158 @@ async function cargarFormRendimiento() {
     .in('pais_id', paisIds)
     .eq('activo', true)
     .order('nombre')
+  rendJugadoresPartido = jugadoresDB || []
 
-  const jugadoresLocal = (jugadoresDB || []).filter(j => j.pais?.id === partido.pais_local?.id)
-  const jugadoresVisitante = (jugadoresDB || []).filter(j => j.pais?.id === partido.pais_visitante?.id)
+  // Rendimientos ya cargados
+  const { data: rends } = await db.from('rendimiento_jugadores').select('*').eq('partido_id', partidoId)
+  rendDataMap = {}
+  ;(rends || []).forEach(r => rendDataMap[r.jugador_id] = r)
+
+  renderRendForm(partido, '')
+  document.getElementById('rendActions').style.display = 'flex'
+}
+
+function renderRendForm(partido, query) {
+  const q = query.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+  const filtrados = rendJugadoresPartido.filter(j => {
+    const nombre = j.nombre.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    return !q || nombre.includes(q)
+  })
+
+  const localId = partido?.pais_local?.id
+  const visitanteId = partido?.pais_visitante?.id
+
+  function renderGrupo(paisId) {
+    const jugs = filtrados.filter(j => j.pais?.id === paisId)
+    if (!jugs.length) return ''
+    const pais = jugs[0].pais
+    const flag = pais?.url_bandera ? `<img style="width:18px;height:12px;border-radius:2px;object-fit:cover" src="${pais.url_bandera}">` : ''
+    const rows = jugs.map(j => {
+      const r = rendDataMap[j.id]
+      const jugo = r && r.minutos_jugados > 0
+      const cargado = !!r
+      const nota = r?.nota_sofascore ? r.nota_sofascore.toFixed(1) : '–'
+      const extras = []
+      if (r?.goles > 0) extras.push(`${r.goles}⚽`)
+      if (r?.asistencias > 0) extras.push(`${r.asistencias}🅰️`)
+      if (r?.motm) extras.push('⭐')
+      if (r?.tarjeta_amarilla) extras.push('🟨')
+      if (r?.tarjeta_roja) extras.push('🟥')
+
+      return `<div class="rend-jugador-row ${cargado ? (jugo ? 'cargado' : 'no-jugo') : ''}" onclick="abrirModalJugador('${j.id}')">
+        <img class="rj-flag" src="${j.pais?.url_bandera || ''}">
+        <div style="flex:1">
+          <div class="rj-name">${j.nombre}</div>
+          <div class="rj-pos">${j.posicion}${extras.length ? ' · ' + extras.join(' ') : ''}</div>
+        </div>
+        ${cargado ? `<div class="rj-nota">${nota}</div>` : '<div class="rj-status">Sin cargar</div>'}
+      </div>`
+    }).join('')
+
+    return `<div class="rend-equipo-title">${flag} ${pais?.nombre || ''}</div>${rows}`
+  }
+
+  const partidoActual = allPartidos.find(p => p.id === document.getElementById('rendPartidoSelect').value)
+
+  document.getElementById('rendFormContainer').innerHTML = `
+    <div class="rend-panel">
+      <div class="rend-search">
+        <input type="text" placeholder="Buscar jugador..." oninput="renderRendForm(null,'${''}')" id="rendBuscador" value="${query}">
+      </div>
+      ${renderGrupo(localId)}
+      ${renderGrupo(visitanteId)}
+      ${filtrados.length === 0 ? '<div class="empty-state">Sin resultados</div>' : ''}
+    </div>`
+
+  // Re-bind search
+  document.getElementById('rendBuscador').oninput = function() {
+    renderRendForm(partidoActual, this.value)
+  }
+}
+
+function abrirModalJugador(jugadorId) {
+  const j = rendJugadoresPartido.find(x => x.id === jugadorId)
+  if (!j) return
+  rendJugadorActual = jugadorId
+  const r = rendDataMap[jugadorId] || {}
+
+  document.getElementById('rendModalFlag').src = j.pais?.url_bandera || ''
+  document.getElementById('rendModalName').textContent = j.nombre
+  document.getElementById('rendModalPos').textContent = j.posicion
+
+  // Poblar valores
+  document.getElementById('inp-nota').value = r.nota_sofascore || ''
+  document.getElementById('inp-goles').value = r.goles || 0
+  document.getElementById('inp-asist').value = r.asistencias || 0
+
+  const jugo = r.minutos_jugados > 0 || (!rendDataMap[jugadorId] ? false : true)
+  setCheck('jugo', jugo || false)
+  setCheck('motm', r.motm || false)
+  setCheck('valla', r.valla_invicta || false)
+  setCheck('amarilla', r.tarjeta_amarilla || false)
+  setCheck('roja', r.tarjeta_roja || false)
+
+  document.getElementById('rendModal').classList.add('show')
+  setTimeout(() => document.getElementById('inp-nota').focus(), 100)
+}
+
+function setCheck(id, val) {
+  const inp = document.getElementById('inp-' + id)
+  const item = document.getElementById('check-' + id)
+  inp.checked = val
+  item.classList.toggle('checked', val)
+}
+
+function toggleCheck(id) {
+  const inp = document.getElementById('inp-' + id)
+  inp.checked = !inp.checked
+  const item = document.getElementById('check-' + id)
+  item.classList.toggle('checked', inp.checked)
+}
+
+function closeRendModal() {
+  document.getElementById('rendModal').classList.remove('show')
+  rendJugadorActual = null
+}
+
+function maybeCloseRend(e) {
+  if (e.target === document.getElementById('rendModal')) closeRendModal()
+}
+
+async function guardarJugadorRendimiento() {
+  if (!rendJugadorActual) return
+  const partidoId = document.getElementById('rendPartidoSelect').value
+  const jugo = document.getElementById('inp-jugo').checked
+  const nota = parseFloat(document.getElementById('inp-nota').value) || null
+  const goles = parseInt(document.getElementById('inp-goles').value) || 0
+  const asist = parseInt(document.getElementById('inp-asist').value) || 0
+  const motm = document.getElementById('inp-motm').checked
+  const valla = document.getElementById('inp-valla').checked
+  const amarilla = document.getElementById('inp-amarilla').checked
+  const roja = document.getElementById('inp-roja').checked
+  const minutos = jugo ? 90 : 0
+
+  const datos = {
+    jugador_id: rendJugadorActual,
+    partido_id: partidoId,
+    nota_sofascore: nota,
+    goles,
+    asistencias: asist,
+    motm,
+    valla_invicta: valla,
+    tarjeta_amarilla: amarilla,
+    tarjeta_roja: roja,
+    minutos_jugados: minutos
+  }
+
+  await db.from('rendimiento_jugadores').upsert(datos, { onConflict: 'jugador_id,partido_id' })
+  rendDataMap[rendJugadorActual] = datos
+  closeRendModal()
+
+  const partido = allPartidos.find(p => p.id === partidoId)
+  renderRendForm(partido, document.getElementById('rendBuscador')?.value || '')
+  showToast('Jugador guardado')
+}
 
   // Rendimientos ya cargados
   const { data: rends } = await db.from('rendimiento_jugadores').select('*').eq('partido_id', partidoId)
@@ -681,39 +937,16 @@ async function guardarRendimiento() {
   const partidoId = document.getElementById('rendPartidoSelect').value
   if (!partidoId) return
 
-  const partido = allPartidos.find(p => p.id === partidoId)
-  const paisIds = [partido.pais_local?.id, partido.pais_visitante?.id].filter(Boolean)
-  const { data: jugadoresDB } = await db
-    .from('jugadores')
-    .select('id,nombre,posicion,pais:pais_id(id,nombre,url_bandera)')
-    .in('pais_id', paisIds)
-    .eq('activo', true)
-  const todosJugadores = jugadoresDB || []
-
-  const rendimientos = []
-  for (const j of todosJugadores) {
-    const nota = parseFloat(document.getElementById('nota-'+j.id)?.value)
-    const goles = parseInt(document.getElementById('goles-'+j.id)?.value) || 0
-    const asist = parseInt(document.getElementById('asist-'+j.id)?.value) || 0
-    const motm = document.getElementById('motm-'+j.id)?.checked || false
-    const valla = document.getElementById('valla-'+j.id)?.checked || false
-    const amarilla = document.getElementById('amarilla-'+j.id)?.checked || false
-    const roja = document.getElementById('roja-'+j.id)?.checked || false
-    const min = parseInt(document.getElementById('min-'+j.id)?.value) || 0
-    if (!nota && min === 0) continue
-    rendimientos.push({ jugador_id: j.id, partido_id: partidoId, nota_sofascore: nota||null, goles, asistencias: asist, motm, valla_invicta: valla, tarjeta_amarilla: amarilla, tarjeta_roja: roja, minutos_jugados: min })
-  }
+  const rendimientos = Object.values(rendDataMap).filter(r => r.partido_id === partidoId)
+  if (rendimientos.length === 0) { showToast('No hay rendimientos cargados', 'warn'); return }
 
   const btn = document.getElementById('btnGuardarRend')
-  btn.disabled = true; btn.textContent = 'Guardando...'
+  btn.disabled = true; btn.textContent = 'Calculando puntos...'
 
-  await db.from('rendimiento_jugadores').upsert(rendimientos, { onConflict: 'jugador_id,partido_id' })
-
-  // Calcular puntos fantasy para todos los equipos
   await calcularPuntosFantasy(partidoId, rendimientos)
 
   btn.disabled = false; btn.textContent = 'Guardar y calcular puntos'
-  showToast('Rendimiento guardado y puntos calculados para todos los usuarios')
+  showToast('Puntos calculados para todos los usuarios')
 }
 
 async function calcularPuntosFantasy(partidoId, rendimientos) {
