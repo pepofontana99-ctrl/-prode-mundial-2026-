@@ -472,7 +472,7 @@ async function cargarPaises() {
 }
 
 async function cargarJugadores() {
-  const { data } = await db.from('jugadores').select('id,nombre,posicion,pais:pais_id(nombre,url_bandera)').eq('activo',true).order('nombre')
+  const { data } = await db.from('jugadores').select('id,nombre,posicion,pais:pais_id(id,nombre,url_bandera)').eq('activo',true).order('nombre')
   allJugadores = data || []
 }
 
@@ -624,8 +624,8 @@ async function cargarFormRendimiento() {
   if (!partido) return
 
   // Jugadores de ambos equipos
-  const jugadoresLocal = allJugadores.filter(j => j.pais?.nombre === partido.pais_local?.nombre)
-  const jugadoresVisitante = allJugadores.filter(j => j.pais?.nombre === partido.pais_visitante?.nombre)
+  const jugadoresLocal = allJugadores.filter(j => j.pais?.id === partido.pais_local?.id)
+  const jugadoresVisitante = allJugadores.filter(j => j.pais?.id === partido.pais_visitante?.id)
 
   // Rendimientos ya cargados
   const { data: rends } = await db.from('rendimiento_jugadores').select('*').eq('partido_id', partidoId)
@@ -674,8 +674,8 @@ async function guardarRendimiento() {
   if (!partidoId) return
 
   const partido = allPartidos.find(p => p.id === partidoId)
-  const jugadoresLocal = allJugadores.filter(j => j.pais?.nombre === partido.pais_local?.nombre)
-  const jugadoresVisitante = allJugadores.filter(j => j.pais?.nombre === partido.pais_visitante?.nombre)
+  const jugadoresLocal = allJugadores.filter(j => j.pais?.id === partido.pais_local?.id)
+  const jugadoresVisitante = allJugadores.filter(j => j.pais?.id === partido.pais_visitante?.id)
   const todosJugadores = [...jugadoresLocal, ...jugadoresVisitante]
 
   const rendimientos = []
