@@ -646,7 +646,7 @@
 
   async function cargarTopJugadores() {
     const el = document.getElementById('topJugadoresList')
-    el.innerHTML = '<div style="padding:1rem"><div class="skeleton" style="height:300px;border-radius:10px"></div></div>'
+    el.innerHTML = '<div style="padding:1rem"><div class="skeleton" style="height:200px;border-radius:10px"></div></div>'
 
     let pts = []
 
@@ -660,16 +660,14 @@
       }
       pts = data
     } else {
-      // Por fecha — poblar select con rondas únicas
       if (partidosFechas.length === 0) {
         const { data: ps } = await db
           .from('partidos')
-          .select('id,ronda,fase,fecha_hora,pais_local:pais_local_id(nombre),pais_visitante:pais_visitante_id(nombre)')
+          .select('id,ronda,fase,fecha_hora')
           .eq('jugado', true)
           .order('fecha_hora')
         partidosFechas = ps || []
 
-        // Agrupar por ronda
         const rondasMap = {}
         partidosFechas.forEach(p => {
           if (!rondasMap[p.ronda]) rondasMap[p.ronda] = []
@@ -709,43 +707,39 @@
     })
     const todos = Object.values(mapa).sort((a,b) => b.total - a.total)
 
-    // Armar 4-3-3: mejor arquero, 4 mejores defensores, 3 mejores mediocampistas, 3 mejores delanteros
-    const byPos = { arquero:[], defensor:[], mediocampista:[], delantero:[] }
-    todos.forEach(d => {
-      const pos = d.jugador?.posicion
-      if (byPos[pos]) byPos[pos].push(d)
-    })
+    // Top 5 por posición
+    const posiciones = [
+      { key: 'delantero', label: '⚽ Delanteros' },
+      { key: 'mediocampista', label: '🔵 Mediocampistas' },
+      { key: 'defensor', label: '🛡 Defensores' },
+      { key: 'arquero', label: '🧤 Arqueros' },
+    ]
 
-    const arq  = byPos.arquero.slice(0,1)
-    const defs = byPos.defensor.slice(0,4)
-    const meds = byPos.mediocampista.slice(0,3)
-    const dels = byPos.delantero.slice(0,3)
+    const posColor = { delantero:'#D85A30', mediocampista:'var(--azul,#378ADD)', defensor:'var(--verde)', arquero:'var(--oro)' }
 
-    function playerCard(d) {
-      if (!d) return `<div class="top-player"><div class="top-player-circle"></div><div class="top-player-name" style="color:rgba(255,255,255,.2)">–</div></div>`
-      const j = d.jugador
-      const flag = j?.pais?.url_bandera ? `<img src="${j.pais.url_bandera}">` : '🏳'
-      const pts = d.total % 1 === 0 ? d.total : d.total.toFixed(1)
-      const nom = j?.nombre?.split(' ').slice(-1)[0] || '–'
-      return `<div class="top-player">
-        <div class="top-player-circle">${flag}<span class="top-player-pts">${pts}</span></div>
-        <div class="top-player-name">${nom}</div>
-        <div class="top-player-pos">${j?.pais?.nombre?.slice(0,3).toUpperCase() || ''}</div>
+    const html = posiciones.map(pos => {
+      const jugadores = todos.filter(d => d.jugador?.posicion === pos.key).slice(0, 5)
+      if (jugadores.length === 0) return ''
+
+      const rows = jugadores.map((d, i) => {
+        const j = d.jugador
+        const flag = j?.pais?.url_bandera ? `<img style="width:18px;height:12px;border-radius:2px;object-fit:cover;vertical-align:middle;margin-right:5px" src="${j.pais.url_bandera}">` : ''
+        const pts = d.total % 1 === 0 ? d.total : d.total.toFixed(1)
+        return `<div style="display:flex;align-items:center;gap:8px;padding:7px 1.25rem;border-bottom:1px solid var(--border);${i===jugadores.length-1?'border-bottom:none':''}">
+          <div style="font-family:'Bebas Neue',sans-serif;font-size:16px;color:var(--muted);min-width:18px">${i+1}</div>
+          ${flag}
+          <div style="flex:1;font-size:12px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${j?.nombre || '–'}</div>
+          <div style="font-family:'Bebas Neue',sans-serif;font-size:20px;color:${posColor[pos.key]}">${pts}</div>
+        </div>`
+      }).join('')
+
+      return `<div style="margin-bottom:4px;">
+        <div style="padding:5px 1.25rem;font-size:10px;font-weight:500;color:${posColor[pos.key]};text-transform:uppercase;letter-spacing:1px;background:rgba(255,255,255,.02);border-bottom:1px solid var(--border)">${pos.label}</div>
+        ${rows}
       </div>`
-    }
+    }).join('')
 
-    function zone(players, count) {
-      const arr = [...players]
-      while (arr.length < count) arr.push(null)
-      return `<div class="top-field-zone">${arr.map(playerCard).join('')}</div>`
-    }
-
-    el.innerHTML = `<div class="top-field">
-      ${zone(dels, 3)}
-      ${zone(meds, 3)}
-      ${zone(defs, 4)}
-      ${zone(arq, 1)}
-    </div>`
+    el.innerHTML = html || '<div style="padding:1.5rem;text-align:center;color:var(--muted);font-size:13px">Sin datos</div>'
   }
 
   async function cargarTablaGrupos() {
