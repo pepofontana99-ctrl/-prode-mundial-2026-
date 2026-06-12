@@ -891,48 +891,6 @@ async function guardarJugadorRendimiento() {
   showToast('Jugador guardado')
 }
 
-  // Rendimientos ya cargados
-  const { data: rends } = await db.from('rendimiento_jugadores').select('*').eq('partido_id', partidoId)
-  const rendMap = {}
-  ;(rends||[]).forEach(r => rendMap[r.jugador_id] = r)
-
-  function renderJugadores(jugadores) {
-    return jugadores.map(j => {
-      const r = rendMap[j.id] || {}
-      return `<div class="rend-row" id="rend-${j.id}">
-        <div>${j.pais?.url_bandera ? `<img class="flag-img" src="${j.pais.url_bandera}" style="width:20px;height:13px">` : ''}</div>
-        <div>
-          <div style="font-size:13px;font-weight:500">${j.nombre}</div>
-          <div style="font-size:10px;color:var(--muted)">${j.posicion}</div>
-        </div>
-        <input class="nota-inp" type="number" step="0.1" min="1" max="10" value="${r.nota_sofascore||''}" placeholder="–" id="nota-${j.id}">
-        <input class="num-inp" type="number" min="0" max="20" value="${r.goles||0}" id="goles-${j.id}">
-        <input class="num-inp" type="number" min="0" max="20" value="${r.asistencias||0}" id="asist-${j.id}">
-        <input type="checkbox" class="check-inp" id="motm-${j.id}" ${r.motm?'checked':''} title="MOTM">
-        <input type="checkbox" class="check-inp" id="valla-${j.id}" ${r.valla_invicta?'checked':''} title="Valla invicta">
-        <input type="checkbox" class="check-inp" id="amarilla-${j.id}" ${r.tarjeta_amarilla?'checked':''} title="Tarjeta amarilla" style="accent-color:var(--oro)">
-        <input type="checkbox" class="check-inp" id="roja-${j.id}" ${r.tarjeta_roja?'checked':''} title="Tarjeta roja" style="accent-color:var(--rojo)">
-        <input class="num-inp" type="number" min="0" max="120" value="${r.minutos_jugados||0}" id="min-${j.id}">
-      </div>`
-    }).join('')
-  }
-
-  document.getElementById('rendFormContainer').innerHTML = `
-    <div class="rend-panel">
-      <div class="rend-row rend-header"><div></div><div>Jugador</div><div>Nota SS</div><div>Goles</div><div>Asist.</div><div>MOTM</div><div>Valla</div><div style="color:var(--oro)">🟨</div><div style="color:var(--rojo)">🟥</div><div>Min.</div></div>
-      <div style="padding:6px 16px;font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);background:rgba(255,255,255,.02);border-bottom:1px solid var(--border);">
-        ${partido.pais_local?.url_bandera ? `<img class="flag-img" src="${partido.pais_local.url_bandera}">` : ''} ${partido.pais_local?.nombre}
-      </div>
-      ${renderJugadores(jugadoresLocal)}
-      <div style="padding:6px 16px;font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);background:rgba(255,255,255,.02);border-bottom:1px solid var(--border);">
-        ${partido.pais_visitante?.url_bandera ? `<img class="flag-img" src="${partido.pais_visitante.url_bandera}">` : ''} ${partido.pais_visitante?.nombre}
-      </div>
-      ${renderJugadores(jugadoresVisitante)}
-    </div>`
-
-  document.getElementById('rendActions').style.display = 'flex'
-}
-
 async function guardarRendimiento() {
   const partidoId = document.getElementById('rendPartidoSelect').value
   if (!partidoId) return
