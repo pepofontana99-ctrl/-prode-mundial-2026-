@@ -675,7 +675,9 @@ async function cargarResultado(partidoId) {
 
 function calcPtsPartido(pL, pV, rL, rV) {
   if (pL === rL && pV === rV) return 5
-  if ((pL > pV && rL > rV) || (pL < pV && rL < rV) || (pL === pV && rL === rV)) return 3
+  const predGana = pL > pV ? 'L' : pL < pV ? 'V' : 'E'
+  const realGana = rL > rV ? 'L' : rL < rV ? 'V' : 'E'
+  if (predGana === realGana) return 3
   return 0
 }
 
