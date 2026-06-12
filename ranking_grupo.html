@@ -241,7 +241,7 @@ async function cargarRanking() {
     const pts = parseFloat(r.pts_total || 0)
 
     return `
-      <div class="rank-row ${isMe ? 'me' : ''}">
+      <div class="rank-row ${isMe ? 'me' : ''}" style="cursor:pointer" onclick="window.location.href='perfil.html?u=${r.usuario_id}'">
         <div class="rank-pos ${posClass}">${i + 1}</div>
         <div class="rank-medal">${medal}</div>
         <div class="rank-avatar ${isMe ? 'me' : ''}">${initials}</div>

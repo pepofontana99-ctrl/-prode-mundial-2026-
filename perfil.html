@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Perfil · Prode Mundial 2026</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root{--verde:#00C853;--oro:#FFD600;--bg:#0a0e17;--bg2:#111827;--bg3:#1a2235;--texto:#e8edf5;--muted:#6b7a99;--border:rgba(255,255,255,0.07);--card:rgba(255,255,255,0.04);}
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--texto);min-height:100vh;}
+  body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellipse 80% 50% at 20% 10%,rgba(0,200,83,0.07) 0%,transparent 60%);pointer-events:none;z-index:0;}
+  nav{position:sticky;top:0;z-index:100;background:rgba(10,14,23,0.9);backdrop-filter:blur(12px);border-bottom:1px solid var(--border);padding:0 2rem;height:56px;display:flex;align-items:center;justify-content:space-between;}
+  .nav-logo{font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:2px;display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--texto);}
+  .nav-logo .dot{width:8px;height:8px;border-radius:50%;background:var(--verde);box-shadow:0 0 8px var(--verde);animation:pulse 2s ease-in-out infinite;}
+  @keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.6;transform:scale(.8)}}
+  .back-btn{font-size:13px;color:var(--muted);background:none;border:1px solid var(--border);border-radius:6px;padding:5px 12px;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all .15s;text-decoration:none;}
+  .back-btn:hover{color:var(--texto);}
+  .wrapper{position:relative;z-index:1;max-width:900px;margin:0 auto;padding:2rem 2rem 4rem;}
+  @keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+
+  /* HEADER PERFIL */
+  .perfil-header{display:flex;align-items:center;gap:1.5rem;margin-bottom:2rem;animation:fadeUp .35s ease both;}
+  .perfil-avatar{width:72px;height:72px;border-radius:50%;background:linear-gradient(135deg,var(--verde),var(--oro));display:flex;align-items:center;justify-content:center;font-family:'Bebas Neue',sans-serif;font-size:32px;color:#000;flex-shrink:0;}
+  .perfil-nombre{font-family:'Bebas Neue',sans-serif;font-size:42px;line-height:1;letter-spacing:2px;}
+  .perfil-sub{font-size:13px;color:var(--muted);margin-top:4px;}
+
+  /* STATS */
+  .stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:1.5rem;animation:fadeUp .35s .05s ease both;}
+  .stat-card{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:14px 16px;text-align:center;}
+  .stat-val{font-family:'Bebas Neue',sans-serif;font-size:36px;line-height:1;}
+  .stat-lbl{font-size:11px;color:var(--muted);margin-top:4px;text-transform:uppercase;letter-spacing:.5px;}
+
+  .section-title{font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:1.5px;color:var(--muted);margin-bottom:1rem;display:flex;align-items:center;gap:10px;}
+  .section-title::after{content:'';flex:1;height:1px;background:var(--border);}
+
+  /* EQUIPO FANTASY */
+  .fantasy-wrap{background:var(--bg2);border:1px solid var(--border);border-radius:14px;overflow:hidden;margin-bottom:1.5rem;animation:fadeUp .35s .1s ease both;}
+  .fantasy-header{display:flex;align-items:center;justify-content:space-between;padding:12px 1.25rem;border-bottom:1px solid var(--border);}
+  .fantasy-pts{font-family:'Bebas Neue',sans-serif;font-size:22px;color:var(--verde);}
+  .fantasy-zone{padding:10px 1.25rem;border-bottom:1px solid var(--border);}
+  .fantasy-zone:last-child{border-bottom:none;}
+  .zone-name{font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-bottom:8px;}
+  .zone-players-row{display:flex;gap:8px;flex-wrap:wrap;}
+  .player-chip{display:flex;align-items:center;gap:6px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:5px 10px;flex:1;min-width:120px;}
+  .chip-flag{width:20px;height:14px;border-radius:2px;object-fit:cover;flex-shrink:0;}
+  .chip-name{font-size:12px;font-weight:500;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .chip-pts{font-family:'Bebas Neue',sans-serif;font-size:16px;flex-shrink:0;color:var(--verde);}
+  .chip-sup{border-style:dashed;opacity:.7;}
+
+  /* ESPECIALES */
+  .especiales-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px;margin-bottom:1.5rem;animation:fadeUp .35s .15s ease both;}
+  .esp-card{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:12px 14px;}
+  .esp-label{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;}
+  .esp-valor{display:flex;align-items:center;gap:8px;}
+  .esp-flag{width:24px;height:16px;border-radius:3px;object-fit:cover;}
+  .esp-nombre{font-size:13px;font-weight:500;}
+  .esp-pts{font-family:'Bebas Neue',sans-serif;font-size:14px;color:var(--oro);margin-left:auto;}
+  .esp-none{font-size:13px;color:var(--muted);font-style:italic;}
+
+  .skeleton{background:linear-gradient(90deg,var(--bg3) 25%,var(--bg2) 50%,var(--bg3) 75%);background-size:200% 100%;animation:shimmer 1.2s infinite;border-radius:6px;}
+  @keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
+
+  @media(max-width:640px){.stats-row{grid-template-columns:1fr 1fr;}.perfil-nombre{font-size:32px;}}
+</style>
+</head>
+<body>
+
+<nav>
+  <a href="hub.html" class="nav-logo"><div class="dot"></div>PRODE MUNDIAL</a>
+  <a href="javascript:history.back()" class="back-btn">← Volver</a>
+</nav>
+
+<div class="wrapper">
+
+  <!-- HEADER -->
+  <div class="perfil-header">
+    <div class="perfil-avatar" id="perfilAvatar">?</div>
+    <div>
+      <div class="perfil-nombre" id="perfilNombre">Cargando...</div>
+      <div class="perfil-sub" id="perfilSub">–</div>
+    </div>
+  </div>
+
+  <!-- STATS -->
+  <div class="stats-row">
+    <div class="stat-card"><div class="stat-val" style="color:var(--verde)" id="statTotal">–</div><div class="stat-lbl">Pts totales</div></div>
+    <div class="stat-card"><div class="stat-val" style="color:var(--oro)" id="statExactos">–</div><div class="stat-lbl">Exactos</div></div>
+    <div class="stat-card"><div class="stat-val" style="color:var(--texto)" id="statPred">–</div><div class="stat-lbl">Pts predicciones</div></div>
+    <div class="stat-card"><div class="stat-val" style="color:var(--texto)" id="statFantasy">–</div><div class="stat-lbl">Pts fantasy</div></div>
+  </div>
+
+  <!-- EQUIPO FANTASY -->
+  <div class="section-title">Mi equipo fantasy</div>
+  <div id="equipoContainer"><div class="skeleton" style="height:200px;border-radius:14px;margin-bottom:1.5rem"></div></div>
+
+  <!-- ESPECIALES -->
+  <div class="section-title">Predicciones especiales</div>
+  <div class="especiales-grid" id="especialesGrid">
+    <div class="skeleton" style="height:70px;border-radius:12px"></div>
+    <div class="skeleton" style="height:70px;border-radius:12px"></div>
+    <div class="skeleton" style="height:70px;border-radius:12px"></div>
+  </div>
+
+</div>
+
+<script>
+const SUPABASE_URL = "https://ipmyezwxpxnyukyurhqd.supabase.co"
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlwbXllend4cHhueXVreXVyaHFkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc0NjA2OTksImV4cCI6MjA5MzAzNjY5OX0.yRG5H0rsGC6lHcIt1kqPzzzyIUQ8s0ttD73g3Q8rJcI"
+const { createClient } = supabase
+const db = createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+
+async function init() {
+  const { data: session } = await db.auth.getSession()
+  if (!session.session) { window.location.href = 'login.html'; return }
+
+  const params = new URLSearchParams(window.location.search)
+  const userId = params.get('u')
+  if (!userId) { window.location.href = 'hub.html'; return }
+
+  await Promise.all([
+    cargarPerfil(userId),
+    cargarRanking(userId),
+    cargarEquipo(userId),
+    cargarEspeciales(userId),
+  ])
+}
+
+async function cargarPerfil(userId) {
+  const { data } = await db.from('usuarios').select('nombre,creado_en').eq('id', userId).single()
+  if (!data) return
+  const nombre = data.nombre || 'Usuario'
+  const inicial = nombre[0].toUpperCase()
+  document.getElementById('perfilAvatar').textContent = inicial
+  document.getElementById('perfilNombre').textContent = nombre
+  const fecha = new Date(data.creado_en).toLocaleDateString('es-AR', { day:'numeric', month:'long', year:'numeric' })
+  document.getElementById('perfilSub').textContent = `Registrado el ${fecha}`
+  document.title = nombre + ' · Prode Mundial 2026'
+}
+
+async function cargarRanking(userId) {
+  const { data } = await db.from('ranking_global')
+    .select('pts_total,pts_predicciones,pts_fantasy,resultados_exactos')
+    .eq('usuario_id', userId).single()
+  if (!data) return
+  document.getElementById('statTotal').textContent = parseFloat(data.pts_total || 0).toFixed(0)
+  document.getElementById('statExactos').textContent = data.resultados_exactos || 0
+  document.getElementById('statPred').textContent = data.pts_predicciones || 0
+  document.getElementById('statFantasy').textContent = parseFloat(data.pts_fantasy || 0).toFixed(1)
+}
+
+async function cargarEquipo(userId) {
+  const { data: eq } = await db.from('equipos_fantasy')
+    .select('arquero_id,def1_id,def2_id,def3_id,def4_id,med1_id,med2_id,med3_id,del1_id,del2_id,del3_id,suplente_def_id,suplente_med_id,suplente_del_id')
+    .eq('usuario_id', userId).single()
+
+  if (!eq) {
+    document.getElementById('equipoContainer').innerHTML = '<div style="color:var(--muted);font-size:13px;margin-bottom:1.5rem">No armó su equipo todavía.</div>'
+    return
+  }
+
+  const allIds = [eq.arquero_id,eq.def1_id,eq.def2_id,eq.def3_id,eq.def4_id,eq.med1_id,eq.med2_id,eq.med3_id,eq.del1_id,eq.del2_id,eq.del3_id,eq.suplente_def_id,eq.suplente_med_id,eq.suplente_del_id].filter(Boolean)
+
+  const { data: jugadores } = await db.from('jugadores').select('id,nombre,posicion,pais:pais_id(nombre,url_bandera)').in('id', allIds)
+  const jugMap = {}
+  jugadores?.forEach(j => jugMap[j.id] = j)
+
+  const { data: puntos } = await db.from('puntos_fantasy').select('jugador_id,pts_total').eq('usuario_id', userId).in('jugador_id', allIds)
+  const ptsMap = {}
+  puntos?.forEach(p => { ptsMap[p.jugador_id] = (ptsMap[p.jugador_id] || 0) + parseFloat(p.pts_total || 0) })
+
+  const totalPts = Object.values(ptsMap).reduce((a,b) => a+b, 0)
+
+  function chip(id, sup = false) {
+    const j = jugMap[id]
+    if (!j) return ''
+    const flag = j.pais?.url_bandera ? `<img class="chip-flag" src="${j.pais.url_bandera}">` : ''
+    const pts = ptsMap[id] || 0
+    return `<div class="player-chip ${sup?'chip-sup':''}">
+      ${flag}
+      <span class="chip-name">${j.nombre}</span>
+      ${pts ? `<span class="chip-pts">${pts%1===0?pts:pts.toFixed(1)}</span>` : ''}
+    </div>`
+  }
+
+  const zonas = [
+    { label:'Delanteros', ids:[eq.del1_id,eq.del2_id,eq.del3_id] },
+    { label:'Mediocampistas', ids:[eq.med1_id,eq.med2_id,eq.med3_id] },
+    { label:'Defensores', ids:[eq.def1_id,eq.def2_id,eq.def3_id,eq.def4_id] },
+    { label:'Arquero', ids:[eq.arquero_id] },
+    { label:'Suplentes', ids:[eq.suplente_def_id,eq.suplente_med_id,eq.suplente_del_id], sup:true },
+  ]
+
+  const zonaHtml = zonas.map(z => `
+    <div class="fantasy-zone">
+      <div class="zone-name">${z.label}</div>
+      <div class="zone-players-row">${z.ids.filter(Boolean).map(id => chip(id, z.sup)).join('')}</div>
+    </div>`).join('')
+
+  document.getElementById('equipoContainer').innerHTML = `
+    <div class="fantasy-wrap">
+      <div class="fantasy-header">
+        <h3 style="font-size:14px;font-weight:500">Equipo fantasy</h3>
+        <div class="fantasy-pts">${totalPts%1===0?totalPts:totalPts.toFixed(1)} pts</div>
+      </div>
+      ${zonaHtml}
+    </div>`
+}
+
+async function cargarEspeciales(userId) {
+  const { data: pe } = await db.from('predicciones_especiales').select('*').eq('usuario_id', userId).single()
+  const { data: pts } = await db.from('puntos_especiales').select('*').eq('usuario_id', userId).single()
+
+  if (!pe) {
+    document.getElementById('especialesGrid').innerHTML = '<div style="color:var(--muted);font-size:13px">No cargó predicciones especiales todavía.</div>'
+    return
+  }
+
+  // Traer nombres de países y jugadores
+  const paisIds = [pe.campeon_id, pe.subcampeon_id, pe.tercero_id].filter(Boolean)
+  const jugIds = [pe.goleador_id, pe.mejor_jugador_id, pe.mejor_arquero_id, pe.revelacion_id].filter(Boolean)
+
+  const { data: paises } = paisIds.length ? await db.from('paises').select('id,nombre,url_bandera').in('id', paisIds) : { data: [] }
+  const { data: jugs } = jugIds.length ? await db.from('jugadores').select('id,nombre,pais:pais_id(url_bandera)').in('id', jugIds) : { data: [] }
+
+  const paisMap = {}; paises?.forEach(p => paisMap[p.id] = p)
+  const jugMap = {}; jugs?.forEach(j => jugMap[j.id] = j)
+
+  function cardPais(label, id, ptsVal) {
+    const p = paisMap[id]
+    if (!p) return `<div class="esp-card"><div class="esp-label">${label}</div><div class="esp-none">Sin elegir</div></div>`
+    return `<div class="esp-card">
+      <div class="esp-label">${label}</div>
+      <div class="esp-valor">
+        <img class="esp-flag" src="${p.url_bandera || ''}">
+        <span class="esp-nombre">${p.nombre}</span>
+        ${ptsVal ? `<span class="esp-pts">+${ptsVal}</span>` : ''}
+      </div>
+    </div>`
+  }
+
+  function cardJug(label, id, ptsVal) {
+    const j = jugMap[id]
+    if (!j) return `<div class="esp-card"><div class="esp-label">${label}</div><div class="esp-none">Sin elegir</div></div>`
+    return `<div class="esp-card">
+      <div class="esp-label">${label}</div>
+      <div class="esp-valor">
+        ${j.pais?.url_bandera ? `<img class="esp-flag" src="${j.pais.url_bandera}">` : ''}
+        <span class="esp-nombre">${j.nombre}</span>
+        ${ptsVal ? `<span class="esp-pts">+${ptsVal}</span>` : ''}
+      </div>
+    </div>`
+  }
+
+  document.getElementById('especialesGrid').innerHTML =
+    cardPais('🏆 Campeón', pe.campeon_id, pts?.pts_campeon) +
+    cardPais('🥈 Subcampeón', pe.subcampeon_id, pts?.pts_subcampeon) +
+    cardPais('🥉 3er puesto', pe.tercero_id, pts?.pts_tercero) +
+    cardJug('⚽ Goleador', pe.goleador_id, pts?.pts_goleador) +
+    cardJug('⭐ Mejor jugador', pe.mejor_jugador_id, pts?.pts_mvp) +
+    cardJug('🧤 Mejor arquero', pe.mejor_arquero_id, pts?.pts_arquero) +
+    cardJug('🚀 Revelación', pe.revelacion_id, pts?.pts_revelacion)
+}
+
+init()
+</script>
+</body>
+</html>

@@ -486,7 +486,7 @@
       const initials = (r.nombre || 'U').slice(0,2).toUpperCase()
       const topClass = i < 3 ? 'top' : ''
       return `
-        <div class="ranking-row ${isMe ? 'me' : ''}">
+        <div class="ranking-row ${isMe ? 'me' : ''}" style="cursor:pointer" onclick="window.location.href='perfil.html?u=${r.usuario_id}'">
           <div class="rank-pos ${topClass}">${i+1}</div>
           <div class="rank-avatar">${initials}</div>
           <div class="rank-name" ${isMe ? 'style="color:var(--verde)"' : ''}>${isMe ? 'Vos · ' : ''}${r.nombre || 'Usuario'}</div>
