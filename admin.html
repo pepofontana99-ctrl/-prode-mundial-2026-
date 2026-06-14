@@ -965,11 +965,19 @@ async function calcularPuntosFantasy(partidoId, rendimientos) {
   }
 
   if (puntos.length > 0) {
-    console.log('Insertando puntos:', puntos)
-    const { error } = await db.from('puntos_fantasy').upsert(puntos, { onConflict: 'usuario_id,jugador_id,partido_id' })
+    // Eliminar duplicados (mismo usuario+jugador+partido)
+    const unicos = Object.values(
+      puntos.reduce((acc, p) => {
+        const key = `${p.usuario_id}_${p.jugador_id}_${p.partido_id}`
+        if (!acc[key] || p.pts_total > acc[key].pts_total) acc[key] = p
+        return acc
+      }, {})
+    )
+    const { error } = await db.from('puntos_fantasy').upsert(unicos, { onConflict: 'usuario_id,jugador_id,partido_id' })
     if (error) console.error('Error puntos_fantasy:', error)
+    else showToast(`Puntos calculados para ${unicos.length} registros`)
   } else {
-    console.log('No hay puntos para insertar')
+    showToast('No hay jugadores en equipos para este partido', 'warn')
   }
 }
 
