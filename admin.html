@@ -1248,6 +1248,8 @@ async function cerrarJornada() {
 
   btn.disabled = false; btn.textContent = '⚡ Calcular suplentes de esta jornada'
 }
+
+async function toggleVentana(abrir) {
   await db.from('configuracion_torneo').update({ ventana_transferencias: abrir }).eq('id', 1)
   cargarEstadoVentana()
   showToast(abrir ? '✅ Ventana de transferencias abierta' : '🔒 Ventana de transferencias cerrada')
