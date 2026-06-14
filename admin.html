@@ -941,7 +941,11 @@ async function calcularPuntosFantasy(partidoId, rendimientos) {
       let rend = rendMap[jugId]
       let esSuplente = false
 
-      if (!rend || rend.minutos_jugados <= 30) {
+      // Si no tiene rendimiento cargado = su partido no se jugó todavía, no procesar
+      if (!rend) continue
+
+      // Si jugó menos de 30 min, intentar suplente
+      if (rend.minutos_jugados <= 30) {
         const pos = slot.replace(/_id/,'').replace(/\d/,'')
         const supSlot = suplentes[pos === 'arquero' ? null : pos]
         if (supSlot && eq[supSlot]) {
