@@ -504,23 +504,29 @@
       .eq('usuario_id', currentUser.id)
     misPredMap = Object.fromEntries((preds||[]).map(p => [p.partido_id, p]))
 
-    const { data: partidos } = await db
+    // Próximos partidos
+    const { data: proximos } = await db
       .from('partidos')
       .select('id,fase,ronda,fecha_hora,cerrado,jugado,goles_local,goles_visitante,pais_local:pais_local_id(nombre,url_bandera),pais_visitante:pais_visitante_id(nombre,url_bandera)')
       .eq('fase','grupos')
+      .eq('jugado', false)
       .order('fecha_hora')
-      .limit(10)
+      .limit(3)
 
-    if (!partidos) return
+    // Resultados recientes
+    const { data: recientes } = await db
+      .from('partidos')
+      .select('id,fase,ronda,fecha_hora,cerrado,jugado,goles_local,goles_visitante,pais_local:pais_local_id(nombre,url_bandera),pais_visitante:pais_visitante_id(nombre,url_bandera)')
+      .eq('fase','grupos')
+      .eq('jugado', true)
+      .order('fecha_hora', { ascending: false })
+      .limit(3)
 
-    const proximos = partidos.filter(p => !p.jugado).slice(0,3)
-    const recientes = partidos.filter(p => p.jugado).slice(-3).reverse()
-
-    document.getElementById('proximosPartidos').innerHTML = proximos.length
+    document.getElementById('proximosPartidos').innerHTML = proximos?.length
       ? proximos.map(p => renderMatchCard(p, false)).join('')
       : '<p style="color:var(--muted);font-size:13px">No hay partidos próximos</p>'
 
-    document.getElementById('resultadosRecientes').innerHTML = recientes.length
+    document.getElementById('resultadosRecientes').innerHTML = recientes?.length
       ? recientes.map(p => renderMatchCard(p, true)).join('')
       : '<p style="color:var(--muted);font-size:13px">Aún no hay resultados</p>'
   }
