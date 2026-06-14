@@ -796,16 +796,22 @@ function renderRendForm(partido, query) {
   document.getElementById('rendFormContainer').innerHTML = `
     <div class="rend-panel">
       <div class="rend-search">
-        <input type="text" placeholder="Buscar jugador..." oninput="renderRendForm(null,'${''}')" id="rendBuscador" value="${query}">
+        <input type="text" placeholder="Buscar jugador..." id="rendBuscador" value="${query}">
       </div>
       ${renderGrupo(localId)}
       ${renderGrupo(visitanteId)}
       ${filtrados.length === 0 ? '<div class="empty-state">Sin resultados</div>' : ''}
     </div>`
 
-  // Re-bind search
-  document.getElementById('rendBuscador').oninput = function() {
+  // Re-bind search — fix: usar addEventListener para no reemplazar el nodo
+  const buscador = document.getElementById('rendBuscador')
+  buscador.addEventListener('input', function() {
     renderRendForm(partidoActual, this.value)
+  })
+  // Mantener el foco y cursor al final
+  if (query) {
+    buscador.focus()
+    buscador.setSelectionRange(query.length, query.length)
   }
 }
 
@@ -896,6 +902,27 @@ async function guardarJugadorRendimiento() {
 async function guardarRendimiento() {
   const partidoId = document.getElementById('rendPartidoSelect').value
   if (!partidoId) return
+
+  // Marcar jugadores sin nota como "no jugaron" (minutos = 0)
+  const noJugaron = rendJugadoresPartido
+    .filter(j => !rendDataMap[j.id])
+    .map(j => ({
+      jugador_id: j.id,
+      partido_id: partidoId,
+      nota_sofascore: null,
+      goles: 0,
+      asistencias: 0,
+      motm: false,
+      valla_invicta: false,
+      tarjeta_amarilla: false,
+      tarjeta_roja: false,
+      minutos_jugados: 0
+    }))
+
+  if (noJugaron.length > 0) {
+    await db.from('rendimiento_jugadores').upsert(noJugaron, { onConflict: 'jugador_id,partido_id' })
+    noJugaron.forEach(r => rendDataMap[r.jugador_id] = r)
+  }
 
   const rendimientos = Object.values(rendDataMap).filter(r => r.partido_id === partidoId)
   if (rendimientos.length === 0) { showToast('No hay rendimientos cargados', 'warn'); return }
