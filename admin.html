@@ -342,8 +342,30 @@
           </div>
         </div>
 
-        <div class="table-wrap" style="margin-bottom:0">
-          <div class="table-header"><h3>📧 Notificaciones por email</h3></div>
+        <div class="table-wrap" style="margin-top:1.25rem">
+          <div class="table-header"><h3>⚡ Cerrar jornada y calcular suplentes</h3></div>
+          <div style="padding:1.25rem;display:flex;flex-direction:column;gap:12px;">
+            <div style="font-size:12px;color:var(--muted)">
+              Usá esto cuando terminaron <strong>todos</strong> los partidos de una fecha. 
+              El sistema evaluará si cada titular jugó en esa fecha — si no jugó, activará al suplente correspondiente.
+            </div>
+            <div class="form-group" style="margin:0">
+              <label class="form-label">Seleccionar jornada</label>
+              <select class="form-select" id="jornadaSelect">
+                <option value="">-- Elegir jornada --</option>
+                <option value="Fecha 1">Fecha 1 (todos los grupos)</option>
+                <option value="Fecha 2">Fecha 2 (todos los grupos)</option>
+                <option value="Fecha 3">Fecha 3 (todos los grupos)</option>
+                <option value="16vos">16vos de final</option>
+                <option value="Cuartos">Cuartos de final</option>
+                <option value="Semifinal">Semifinal</option>
+                <option value="Final">Final</option>
+              </select>
+            </div>
+            <button class="btn btn-primary" onclick="cerrarJornada()" id="btnCerrarJornada">⚡ Calcular suplentes de esta jornada</button>
+            <div id="jornadaStatus" style="font-size:12px;color:var(--muted);display:none"></div>
+          </div>
+        </div>
           <div style="padding:1.25rem;display:flex;flex-direction:column;gap:12px;">
             <div class="form-group" style="margin:0">
               <label class="form-label">Tipo</label>
@@ -1093,7 +1115,139 @@ async function guardarGanadores() {
   showToast('Ganadores guardados y puntos calculados para todos los usuarios')
 }
 
-async function toggleVentana(abrir) {
+async function cerrarJornada() {
+  const jornada = document.getElementById('jornadaSelect').value
+  if (!jornada) { showToast('Elegí una jornada primero', 'warn'); return }
+
+  const btn = document.getElementById('btnCerrarJornada')
+  const status = document.getElementById('jornadaStatus')
+  btn.disabled = true; btn.textContent = 'Calculando...'
+  status.style.display = 'block'; status.textContent = 'Buscando partidos de la jornada...'
+  status.style.color = 'var(--muted)'
+
+  // Traer todos los partidos jugados de esta jornada
+  const { data: partidos } = await db
+    .from('partidos')
+    .select('id,ronda')
+    .eq('jugado', true)
+    .ilike('ronda', `%${jornada}%`)
+
+  if (!partidos || partidos.length === 0) {
+    btn.disabled = false; btn.textContent = '⚡ Calcular suplentes de esta jornada'
+    status.textContent = 'No hay partidos jugados para esta jornada'
+    status.style.color = 'var(--rojo)'
+    return
+  }
+
+  const partidoIds = partidos.map(p => p.id)
+  status.textContent = `${partidos.length} partidos encontrados. Cargando rendimientos...`
+
+  // Traer todos los rendimientos de esta jornada
+  const { data: rends } = await db
+    .from('rendimiento_jugadores')
+    .select('jugador_id,partido_id,nota_sofascore,goles,asistencias,motm,valla_invicta,tarjeta_roja,minutos_jugados')
+    .in('partido_id', partidoIds)
+
+  // Set de jugadores que jugaron en esta jornada (>30 min)
+  const jugadoronSet = new Set(
+    (rends || []).filter(r => r.minutos_jugados > 30).map(r => r.jugador_id)
+  )
+
+  // Mapa rendimiento por jugador (suma de la jornada)
+  const rendJornadaMap = {}
+  ;(rends || []).forEach(r => {
+    if (!rendJornadaMap[r.jugador_id]) {
+      rendJornadaMap[r.jugador_id] = { ...r, pts_calculados: false }
+    }
+  })
+
+  status.textContent = 'Evaluando equipos y suplentes...'
+
+  // Traer posiciones
+  const jugIds = Object.keys(rendJornadaMap)
+  const { data: jugsData } = jugIds.length
+    ? await db.from('jugadores').select('id,posicion').in('id', jugIds)
+    : { data: [] }
+  const posMap = {}
+  jugsData?.forEach(j => posMap[j.id] = j.posicion)
+
+  // Traer equipos
+  const { data: equipos } = await db.from('equipos_fantasy')
+    .select('usuario_id,arquero_id,def1_id,def2_id,def3_id,def4_id,med1_id,med2_id,med3_id,del1_id,del2_id,del3_id,suplente_def_id,suplente_med_id,suplente_del_id')
+
+  const suplentes = { def:'suplente_def_id', med:'suplente_med_id', del:'suplente_del_id' }
+  const slots = ['arquero_id','def1_id','def2_id','def3_id','def4_id','med1_id','med2_id','med3_id','del1_id','del2_id','del3_id']
+
+  const puntosSuplentes = []
+
+  for (const eq of (equipos || [])) {
+    for (const slot of slots) {
+      const jugId = eq[slot]
+      if (!jugId) continue
+
+      // ¿El titular jugó en esta jornada?
+      const titularJugo = jugadoronSet.has(jugId)
+
+      if (!titularJugo) {
+        // El titular no jugó — buscar suplente
+        const posSlot = slot.replace(/_id/,'').replace(/\d/,'')
+        const supKey = suplentes[posSlot]
+        if (!supKey) continue // arquero no tiene suplente
+
+        const supId = eq[supKey]
+        if (!supId) continue
+
+        // ¿El suplente jugó en esta jornada?
+        if (!jugadoronSet.has(supId)) continue
+
+        // Calcular puntos del suplente para esta jornada
+        const rendSup = rendJornadaMap[supId]
+        if (!rendSup) continue
+
+        const pos = posMap[supId] || 'delantero'
+        const ptsNota = calcNota(rendSup.nota_sofascore)
+        const ptsBonus = calcBonus(pos, rendSup.goles, rendSup.asistencias, rendSup.motm, rendSup.valla_invicta, rendSup.tarjeta_roja)
+        const ptsTotal = ptsNota + ptsBonus
+
+        // Usar el partido_id del suplente
+        puntosSuplentes.push({
+          usuario_id: eq.usuario_id,
+          jugador_id: supId,
+          partido_id: rendSup.partido_id,
+          es_suplente: true,
+          pts_nota: ptsNota,
+          pts_bonus: ptsBonus,
+          pts_total: ptsTotal
+        })
+      }
+    }
+  }
+
+  if (puntosSuplentes.length > 0) {
+    // Deduplicar
+    const unicos = Object.values(
+      puntosSuplentes.reduce((acc, p) => {
+        const key = `${p.usuario_id}_${p.jugador_id}_${p.partido_id}`
+        if (!acc[key]) acc[key] = p
+        return acc
+      }, {})
+    )
+    const { error } = await db.from('puntos_fantasy').upsert(unicos, { onConflict: 'usuario_id,jugador_id,partido_id' })
+    if (error) {
+      status.textContent = 'Error: ' + error.message
+      status.style.color = 'var(--rojo)'
+    } else {
+      status.textContent = `✅ ${unicos.length} suplentes activados para la ${jornada}`
+      status.style.color = 'var(--verde)'
+      showToast(`Suplentes de ${jornada} calculados`)
+    }
+  } else {
+    status.textContent = `✅ No hubo suplentes para activar en ${jornada}`
+    status.style.color = 'var(--verde)'
+  }
+
+  btn.disabled = false; btn.textContent = '⚡ Calcular suplentes de esta jornada'
+}
   await db.from('configuracion_torneo').update({ ventana_transferencias: abrir }).eq('id', 1)
   cargarEstadoVentana()
   showToast(abrir ? '✅ Ventana de transferencias abierta' : '🔒 Ventana de transferencias cerrada')
@@ -1107,6 +1261,12 @@ async function cargarEstadoVentana() {
     status.textContent = abierta ? '✅ Ventana ABIERTA — los usuarios pueden hacer cambios' : '🔒 Ventana CERRADA'
     status.style.color = abierta ? 'var(--verde)' : 'var(--muted)'
   }
+}
+
+async function toggleVentana(abrir) {
+  await db.from('configuracion_torneo').update({ ventana_transferencias: abrir }).eq('id', 1)
+  cargarEstadoVentana()
+  showToast(abrir ? '✅ Ventana de transferencias abierta' : '🔒 Ventana de transferencias cerrada')
 }
 
 async function bloquearPredicciones() {
