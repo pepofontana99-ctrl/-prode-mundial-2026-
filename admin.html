@@ -903,34 +903,16 @@ async function guardarRendimiento() {
   const partidoId = document.getElementById('rendPartidoSelect').value
   if (!partidoId) return
 
-  // Marcar jugadores sin nota como "no jugaron" (minutos = 0)
-  const noJugaron = rendJugadoresPartido
-    .filter(j => !rendDataMap[j.id])
-    .map(j => ({
-      jugador_id: j.id,
-      partido_id: partidoId,
-      nota_sofascore: null,
-      goles: 0,
-      asistencias: 0,
-      motm: false,
-      valla_invicta: false,
-      tarjeta_amarilla: false,
-      tarjeta_roja: false,
-      minutos_jugados: 0
-    }))
-
-  if (noJugaron.length > 0) {
-    await db.from('rendimiento_jugadores').upsert(noJugaron, { onConflict: 'jugador_id,partido_id' })
-    noJugaron.forEach(r => rendDataMap[r.jugador_id] = r)
-  }
-
   const rendimientos = Object.values(rendDataMap).filter(r => r.partido_id === partidoId)
   if (rendimientos.length === 0) { showToast('No hay rendimientos cargados', 'warn'); return }
 
   const btn = document.getElementById('btnGuardarRend')
   btn.disabled = true; btn.textContent = 'Calculando puntos...'
 
-  await calcularPuntosFantasy(partidoId, rendimientos)
+  // Solo usar jugadores que tienen nota o que fueron marcados como "jugaron"
+  const rendValidos = rendimientos.filter(r => r.nota_sofascore || r.minutos_jugados > 0)
+
+  await calcularPuntosFantasy(partidoId, rendValidos)
 
   btn.disabled = false; btn.textContent = 'Guardar y calcular puntos'
   showToast('Puntos calculados para todos los usuarios')
