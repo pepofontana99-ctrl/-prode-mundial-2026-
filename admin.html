@@ -912,6 +912,12 @@ async function guardarRendimiento() {
 async function calcularPuntosFantasy(partidoId, rendimientos) {
   const { data: equipos } = await db.from('equipos_fantasy').select('usuario_id,arquero_id,def1_id,def2_id,def3_id,def4_id,med1_id,med2_id,med3_id,del1_id,del2_id,del3_id,suplente_def_id,suplente_med_id,suplente_del_id')
 
+  // Traer posiciones de jugadores directamente de la BD
+  const jugIds = rendimientos.map(r => r.jugador_id)
+  const { data: jugsData } = await db.from('jugadores').select('id,posicion').in('id', jugIds)
+  const posMap = {}
+  jugsData?.forEach(j => posMap[j.id] = j.posicion)
+
   const rendMap = {}
   rendimientos.forEach(r => rendMap[r.jugador_id] = r)
 
@@ -926,7 +932,6 @@ async function calcularPuntosFantasy(partidoId, rendimientos) {
       let rend = rendMap[jugId]
       let esSuplente = false
 
-      // Si el titular no jugó 30+ min, intentar suplente
       if (!rend || rend.minutos_jugados <= 30) {
         const pos = slot.replace(/_id/,'').replace(/\d/,'')
         const supSlot = suplentes[pos === 'arquero' ? null : pos]
@@ -941,12 +946,12 @@ async function calcularPuntosFantasy(partidoId, rendimientos) {
 
       if (!rend || rend.minutos_jugados <= 30) continue
 
-      const jugador = allJugadores.find(j => j.id === (esSuplente ? rend.jugador_id : jugId))
-      const pos = jugador?.posicion || 'delantero'
+      const actualJugId = esSuplente ? rend.jugador_id : jugId
+      const pos = posMap[actualJugId] || 'delantero'
       const ptsNota = calcNota(rend.nota_sofascore)
       const ptsBonus = calcBonus(pos, rend.goles, rend.asistencias, rend.motm, rend.valla_invicta, rend.tarjeta_roja)
 
-      puntos.push({ usuario_id: eq.usuario_id, jugador_id: rend.jugador_id, partido_id: partidoId, es_suplente: esSuplente, pts_nota: ptsNota, pts_bonus: ptsBonus, pts_total: ptsNota + ptsBonus })
+      puntos.push({ usuario_id: eq.usuario_id, jugador_id: actualJugId, partido_id: partidoId, es_suplente: esSuplente, pts_nota: ptsNota, pts_bonus: ptsBonus, pts_total: ptsNota + ptsBonus })
     }
   }
 
