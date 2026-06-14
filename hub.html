@@ -214,7 +214,12 @@
 
     <!-- MI EQUIPO FANTASY -->
     <div>
-      <div class="section-title">Mi equipo fantasy</div>
+      <div class="section-title" style="display:flex;align-items:center;justify-content:space-between;">
+        <span>Mi equipo fantasy</span>
+        <select id="equipoFechaSelect" class="join-input" style="width:auto;font-size:11px;padding:4px 8px;border-radius:6px;text-transform:none;font-family:'DM Sans',sans-serif;" onchange="cargarMiEquipoHub()">
+          <option value="total">Total acumulado</option>
+        </select>
+      </div>
       <div id="miEquipoFantasy">
         <div class="skeleton" style="height:200px;border-radius:14px"></div>
       </div>
@@ -304,13 +309,40 @@
       cargarPartidos(),
       cargarMiGrupo(),
       cargarMiEquipoHub(),
+      cargarRondasJugadas(),
       cargarTablaGrupos(),
       cargarTopJugadores(),
     ])
   }
 
+  let rondasJugadas = []
+
+  async function cargarRondasJugadas() {
+    const { data } = await db
+      .from('partidos')
+      .select('ronda')
+      .eq('jugado', true)
+      .order('fecha_hora')
+    if (!data) return
+
+    // Extraer fechas únicas (ej: "Fecha 1", "Fecha 2", "16vos", etc.)
+    const fechasSet = new Set()
+    data.forEach(p => {
+      const match = p.ronda?.match(/(Fecha \d+|16vos|Cuartos|Semifinal|Final)/i)
+      if (match) fechasSet.add(match[1])
+    })
+    rondasJugadas = [...fechasSet]
+
+    const sel = document.getElementById('equipoFechaSelect')
+    if (sel) {
+      sel.innerHTML = '<option value="total">Total acumulado</option>' +
+        rondasJugadas.map(r => `<option value="${r}">${r}</option>`).join('')
+    }
+  }
+
   async function cargarMiEquipoHub() {
     const el = document.getElementById('miEquipoFantasy')
+    const fechaFiltro = document.getElementById('equipoFechaSelect')?.value || 'total'
 
     // Traer equipo
     const { data: eq } = await db
@@ -324,38 +356,34 @@
       return
     }
 
-    // Todos los IDs de jugadores
     const allIds = [eq.arquero_id,eq.def1_id,eq.def2_id,eq.def3_id,eq.def4_id,eq.med1_id,eq.med2_id,eq.med3_id,eq.del1_id,eq.del2_id,eq.del3_id,eq.suplente_def_id,eq.suplente_med_id,eq.suplente_del_id].filter(Boolean)
 
-    // Traer jugadores
-    const { data: jugadores } = await db
-      .from('jugadores')
-      .select('id,nombre,posicion,pais:pais_id(nombre,url_bandera)')
-      .in('id', allIds)
-
+    const { data: jugadores } = await db.from('jugadores').select('id,nombre,posicion,pais:pais_id(nombre,url_bandera)').in('id', allIds)
     const jugMap = {}
     jugadores?.forEach(j => jugMap[j.id] = j)
 
-    // Traer puntos del torneo por jugador
-    const { data: puntos } = await db
-      .from('puntos_fantasy')
-      .select('jugador_id,pts_total,pts_nota,pts_bonus')
-      .eq('usuario_id', currentUser.id)
-      .in('jugador_id', allIds)
+    // Filtrar por fecha si corresponde
+    let partidoIdsFiltro = null
+    if (fechaFiltro !== 'total') {
+      const { data: ps } = await db.from('partidos').select('id').ilike('ronda', `%${fechaFiltro}%`).eq('jugado', true)
+      partidoIdsFiltro = (ps || []).map(p => p.id)
+    }
 
-    // Agrupar puntos por jugador
+    // Traer puntos filtrados
+    let ptsQuery = db.from('puntos_fantasy').select('jugador_id,pts_total,pts_nota').eq('usuario_id', currentUser.id).in('jugador_id', allIds)
+    if (partidoIdsFiltro) ptsQuery = ptsQuery.in('partido_id', partidoIdsFiltro)
+    const { data: puntos } = await ptsQuery
+
     const ptsMap = {}
     puntos?.forEach(p => {
       if (!ptsMap[p.jugador_id]) ptsMap[p.jugador_id] = 0
       ptsMap[p.jugador_id] += parseFloat(p.pts_total || 0)
     })
 
-    // Traer última nota de cada jugador
-    const { data: ultRend } = await db
-      .from('rendimiento_jugadores')
-      .select('jugador_id,nota_sofascore,partido_id')
-      .in('jugador_id', allIds)
-      .order('cargado_en', { ascending: false })
+    // Nota del último partido o de la fecha seleccionada
+    let rendQuery = db.from('rendimiento_jugadores').select('jugador_id,nota_sofascore').in('jugador_id', allIds).order('cargado_en', { ascending: false })
+    if (partidoIdsFiltro) rendQuery = rendQuery.in('partido_id', partidoIdsFiltro)
+    const { data: ultRend } = await rendQuery
 
     const notaMap = {}
     ultRend?.forEach(r => { if (!notaMap[r.jugador_id]) notaMap[r.jugador_id] = r.nota_sofascore })
@@ -379,11 +407,12 @@
       return `<div class="player-chip ${esSuplente ? 'chip-sup' : ''}">
         ${flag}
         <span class="chip-name">${j.nombre}</span>
-        <span class="chip-nota ${notaClass(nota)}">${notaStr}</span>
+        <span class="chip-nota ${notaClass(nota)}">${pts ? pts.toFixed(1) : notaStr}</span>
       </div>`
     }
 
     const totalPts = Object.values(ptsMap).reduce((a,b) => a+b, 0)
+    const labelFecha = fechaFiltro === 'total' ? 'acumulados' : fechaFiltro
 
     const zonas = [
       { label: 'Delanteros', ids: [eq.del1_id, eq.del2_id, eq.del3_id] },
@@ -409,10 +438,11 @@
         </div>
         ${zonaHtml}
         <div class="fantasy-total">
-          <span>La nota es del último partido jugado</span>
-          <strong>${totalPts.toFixed(1)} pts acumulados</strong>
+          <span>${fechaFiltro === 'total' ? 'La nota es del último partido' : fechaFiltro}</span>
+          <strong>${totalPts.toFixed(1)} pts ${labelFecha}</strong>
         </div>
       </div>`
+  }
   }
 
   let misGrupos = []
